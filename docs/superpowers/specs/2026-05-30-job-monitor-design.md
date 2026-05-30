@@ -101,7 +101,7 @@ Cards are preferred over wide tables so the page works on mobile. Each card link
 
 ## Schedule
 
-GitHub Actions runs daily at 09:00 Korea Standard Time. Because GitHub Actions cron uses UTC, schedule should be `0 0 * * *`.
+GitHub Actions runs daily at 09:30 Korea Standard Time. Because GitHub Actions cron uses UTC, schedule should be `30 0 * * *`.
 
 The workflow also supports manual dispatch.
 

@@ -1674,7 +1674,7 @@ name: Update jobs
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "30 0 * * *"
   workflow_dispatch:
 
 permissions:
@@ -1831,7 +1831,7 @@ Append to `context-notes.md`.
 ## 2026-05-30 Implementation
 
 - Implemented TypeScript CLI using Playwright, Vitest, and static HTML generation.
-- GitHub Actions runs at 09:00 KST through cron `0 0 * * *`.
+- GitHub Actions runs at 09:30 KST through cron `30 0 * * *`.
 - Generated dashboard is deployed from `public/`.
 - Generated JSON snapshots are committed under `data/`.
 ```

@@ -12,7 +12,7 @@
 - Samsung scope is Samsung Electronics DX and Samsung Electronics DS.
 - LG scope is LG Electronics and LG Energy Solution.
 - Approved approach is GitHub Actions plus static HTML plus JSON snapshots.
-- Approved schedule is daily at 09:00 KST.
+- Approved schedule is daily at 09:30 KST.
 - Closing-soon threshold is 7 days.
 - One site failing should not block other sites.
 - User approved the design document and asked to continue.
@@ -23,7 +23,7 @@
 ## 2026-05-30 Implementation
 
 - Implemented TypeScript CLI using Playwright, Vitest, and static HTML generation.
-- GitHub Actions runs at 09:00 KST through cron `0 0 * * *`.
+- GitHub Actions runs at 09:30 KST through cron `30 0 * * *`.
 - Generated dashboard is deployed from `public/`.
 - Generated JSON snapshots are committed under `data/` when at least one source succeeds.
 - Final verification: `powershell -ExecutionPolicy Bypass -File scripts/run-npm.ps1 test` exited 0 with 9 test files and 63 tests passed; `powershell -ExecutionPolicy Bypass -File scripts/run-npm.ps1 run build` exited 0 with `tsc --noEmit`; `powershell -ExecutionPolicy Bypass -File scripts/run-npm.ps1 run update` exited 0 but reported `postings=0 sources=5 failed=5`, so live update is not verified as successful. `npx playwright install chromium` was not needed because Chromium launched and reached `page.evaluate`. All five sources failed with `page.evaluate: ReferenceError: __name is not defined`; no `data/` snapshot was generated, and failed-run dashboard files were left under `public/` for final review.
@@ -64,3 +64,4 @@
 - The LG fallback was tightened after a false-positive check so repeated metadata company lines cannot attach the following non-target career card.
 - Final validation passed with 9 test files and 78 tests, then `tsc --noEmit`, then live update. Live update reported `postings=13 sources=5 failed=0`: Hyundai 8, LG 5, Samsung/Kia/Mobis 0.
 - After merging to main, Vitest initially picked up the nested `.worktrees/` copy and ran tests twice, so `vitest.config.ts` now excludes `.worktrees/**`. Main validation then passed with 9 test files and 78 tests, followed by `tsc --noEmit`.
+- Schedule changed from 09:00 KST to 09:30 KST by updating GitHub Actions cron from `0 0 * * *` to `30 0 * * *`.

@@ -75,8 +75,26 @@ describe("site config validation", () => {
   it.each([
     ["Samsung default company", { ...validSites[0], defaultCompany: "Samsung Electronics DX" }, "defaultCompany"],
     ["Samsung alias rules", { ...validSites[0], companies: [] }, "alias"],
+    [
+      "Samsung missing DS",
+      { ...validSites[0], companies: [{ name: "Samsung Electronics DX", aliases: ["Samsung DX"] }] },
+      "exactly",
+    ],
     ["Samsung scoped company", { ...validSites[0], companies: [{ name: "Kia", aliases: ["기아"] }] }, "scoped"],
+    [
+      "Samsung extra scoped company",
+      {
+        ...validSites[0],
+        companies: [...validSites[0].companies, { name: "Kia", aliases: ["Kia"] }],
+      },
+      "scoped",
+    ],
     ["LG alias rules", { ...validSites[1], companies: [{ name: "LG Electronics", aliases: [] }] }, "alias"],
+    [
+      "LG missing LG Energy Solution",
+      { ...validSites[1], companies: [{ name: "LG Electronics", aliases: ["LG Electronics"] }] },
+      "exactly",
+    ],
   ])("rejects invalid %s scoped config", async (_name, site, expectedMessage) => {
     await expect(loadSiteConfigs(await writeConfig([site]))).rejects.toThrow(expectedMessage);
   });

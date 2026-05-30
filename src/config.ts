@@ -163,6 +163,15 @@ function validateScopedCompanyRules(
       throw new Error(`${label}.companies must only include ${source} scoped companies.`);
     }
   }
+
+  const expectedCompanyNames = [...allowedScopedCompanies].sort();
+  const actualCompanyNames = companies.map((company) => company.name).sort();
+  if (
+    actualCompanyNames.length !== expectedCompanyNames.length ||
+    actualCompanyNames.some((name, index) => name !== expectedCompanyNames[index])
+  ) {
+    throw new Error(`${label}.companies must include exactly ${allowedScopedCompanies.join(", ")} for ${source}.`);
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

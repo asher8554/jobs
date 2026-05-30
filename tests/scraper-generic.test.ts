@@ -41,6 +41,19 @@ describe("parseCandidateBlocks", () => {
     expect(result[0].contentHash).toHaveLength(16);
   });
 
+  it("parses default-company postings with Korean unit date ranges", () => {
+    const result = parseCandidateBlocks(kiaConfig, [{
+      text: "경력\n플랫폼 개발자\n접수기간 2026년 05월 30일 ~ 2026년 06월 06일",
+      url: "https://career.kia.com/job/korean-date",
+    }], "2026-05-30T00:00:00.000Z");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      title: "플랫폼 개발자",
+      endDate: "2026-06-06",
+    });
+  });
+
   it("rejects ambiguous default-company aggregate blocks", () => {
     const result = parseCandidateBlocks(kiaConfig, [{
       text: [

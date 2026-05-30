@@ -15,8 +15,9 @@ export type ScrapeOutput = {
   status: SourceStatus;
 };
 
-const DATE_LINE_PATTERN = /20\d{2}[.\-/\s]+\d{1,2}[.\-/\s]+\d{1,2}/;
-const DATE_RANGE_PATTERN = /20\d{2}[.\-/년\s]+\d{1,2}[.\-/월\s]+\d{1,2}\s*[-~〜–—]\s*20\d{2}[.\-/년\s]+\d{1,2}[.\-/월\s]+\d{1,2}/g;
+const DATE_TOKEN_PATTERN_SOURCE = String.raw`20\d{2}[.\-/년\s]+\d{1,2}[.\-/월\s]+\d{1,2}(?:일)?`;
+const DATE_LINE_PATTERN = new RegExp(DATE_TOKEN_PATTERN_SOURCE);
+const DATE_RANGE_PATTERN = new RegExp(`${DATE_TOKEN_PATTERN_SOURCE}\\s*[-~〜–—]\\s*${DATE_TOKEN_PATTERN_SOURCE}`, "g");
 const LOAD_MORE_TEXT_PATTERN = /더보기|더 보기|More|MORE|Load more|전체보기|결과 더 보기/i;
 const CAREER_LABEL_PATTERN = /^\s*(?:[\[【(]\s*)?경력(?:직)?(?:\s*[\]】)])?(?=$|[\s:：\-|])/;
 

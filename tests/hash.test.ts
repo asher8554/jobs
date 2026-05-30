@@ -1,6 +1,6 @@
 // 채용 공고 해시 계산 규칙을 검증한다.
 import { describe, expect, it } from "vitest";
-import { buildContentHash, hashText } from "../src/hash.js";
+import { buildContentHash, buildPostingId, hashText } from "../src/hash.js";
 import type { JobPosting } from "../src/model.js";
 
 const baseJob: JobPosting = {
@@ -41,5 +41,33 @@ describe("hash helpers", () => {
     const changed = buildContentHash(changedJob);
 
     expect(changed).toBe(original);
+  });
+
+  it("builds posting ids with the source prefix", () => {
+    const id = buildPostingId("kia", "Kia", "Software Engineer", "https://example.com/job/1");
+
+    expect(id.startsWith("kia-")).toBe(true);
+  });
+
+  it("normalizes title whitespace when building posting ids", () => {
+    const original = buildPostingId("kia", "Kia", "Software Engineer", "https://example.com/job/1");
+    const changedWhitespace = buildPostingId(
+      "kia",
+      "Kia",
+      "  Software\n\tEngineer  ",
+      "https://example.com/job/1",
+    );
+
+    expect(changedWhitespace).toBe(original);
+  });
+
+  it("changes posting id when source, company, or url changes", () => {
+    const original = buildPostingId("kia", "Kia", "Software Engineer", "https://example.com/job/1");
+
+    expect(buildPostingId("hyundai", "Kia", "Software Engineer", "https://example.com/job/1")).not.toBe(original);
+    expect(buildPostingId("kia", "Hyundai Motor Company", "Software Engineer", "https://example.com/job/1")).not.toBe(
+      original,
+    );
+    expect(buildPostingId("kia", "Kia", "Software Engineer", "https://example.com/job/2")).not.toBe(original);
   });
 });

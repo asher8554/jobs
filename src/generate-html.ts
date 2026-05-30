@@ -27,6 +27,7 @@ export function generateHtml(snapshot: Snapshot, diff: DiffResult): string {
     .card { background: #ffffff; border: 1px solid #dbe3ef; border-radius: 8px; padding: 14px; box-shadow: 0 1px 2px rgba(15, 23, 42, .06); }
     .card a { color: #075985; font-weight: 700; text-decoration: none; }
     .card a:hover { text-decoration: underline; }
+    .disabled-link { color: #475569; font-weight: 700; }
     .badge { display: inline-flex; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; margin-right: 6px; }
     .new { background: #dcfce7; color: #166534; }
     .changed { background: #fef3c7; color: #92400e; }
@@ -127,7 +128,23 @@ function renderPostingCard(posting: JobPosting, badgeClass: string, badgeLabel: 
 }
 
 function renderPostingLink(posting: JobPosting, badgeClass: string, badgeLabel: string): string {
-  return `<span class="badge ${escapeHtml(badgeClass)}">${escapeHtml(badgeLabel)}</span><a href="${escapeHtml(posting.url)}" target="_blank" rel="noreferrer">${escapeHtml(posting.title)}</a>`;
+  const badge = `<span class="badge ${escapeHtml(badgeClass)}">${escapeHtml(badgeLabel)}</span>`;
+  const title = escapeHtml(posting.title);
+
+  if (!isHttpUrl(posting.url)) {
+    return `${badge}<span class="disabled-link">${title}</span>`;
+  }
+
+  return `${badge}<a href="${escapeHtml(posting.url)}" target="_blank" rel="noreferrer">${title}</a>`;
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function renderSourceStatus(sources: SourceStatus[]): string {

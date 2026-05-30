@@ -1,7 +1,7 @@
 // 채용 사이트 화면에서 공고 후보를 추출하고 공통 공고 모델로 정규화한다.
 import type { Browser, Page } from "playwright";
 import type { SiteConfig } from "../config.js";
-import { extractDateRange } from "../date.js";
+import { extractDateRange, kstDateStamp } from "../date.js";
 import { buildContentHash, buildPostingId } from "../hash.js";
 import type { CompanyName, JobPosting, SourceStatus } from "../model.js";
 
@@ -18,8 +18,13 @@ export type ScrapeOutput = {
 const DATE_TOKEN_PATTERN_SOURCE = String.raw`20\d{2}[.\-/년\s]+\d{1,2}[.\-/월\s]+\d{1,2}(?:일)?`;
 const DATE_LINE_PATTERN = new RegExp(DATE_TOKEN_PATTERN_SOURCE);
 const DATE_RANGE_PATTERN = new RegExp(`${DATE_TOKEN_PATTERN_SOURCE}\\s*[-~〜–—]\\s*${DATE_TOKEN_PATTERN_SOURCE}`, "g");
+const D_DAY_LINE_PATTERN = /^\s*D-\s*\d+\s*$/i;
+const D_DAY_TEXT_PATTERN = /(?:^|\n)\s*D-\s*(\d+)\s*(?=\n|$)/i;
+const UI_LABEL_PATTERN = /^(공유|스크랩|삭제|검색|초기화)$/;
+const NO_ACTIVE_POSTINGS_PATTERN = /0\s*개의?\s*채용\s*공고|총\s*0\s*건/;
 const LOAD_MORE_TEXT_PATTERN = /더보기|더 보기|More|MORE|Load more|전체보기|결과 더 보기/i;
 const CAREER_LABEL_PATTERN = /^\s*(?:[\[【(]\s*)?경력(?:직)?(?:\s*[\]】)])?(?=$|[\s:：\-|])/;
+const ZERO_POSTING_RETRY_COUNT = 5;
 
 export function parseCandidateBlocks(
   site: SiteConfig,
@@ -59,29 +64,29 @@ export async function scrapeGenericCareerPage(
     await page.waitForSelector("body", { timeout: 10_000 });
     await page.waitForSelector(getCandidateSelector(), { timeout: 5_000 }).catch(() => undefined);
     await clickLoadMore(page);
+    await waitForPostingSignals(page, site);
 
-    const blocks = await collectCandidateBlocks(page);
+    const { blocks, postings } = await collectParsedPostings(page, site, checkedAt);
     if (blocks.length === 0) {
       return {
         postings: [],
         status: {
           source: site.source,
-          ok: false,
+          ok: true,
           checkedAt,
-          message: "No candidate posting blocks found.",
+          postingCount: 0,
         },
       };
     }
 
-    const postings = parseCandidateBlocks(site, blocks, checkedAt);
     if (postings.length === 0) {
       return {
         postings: [],
         status: {
           source: site.source,
-          ok: false,
+          ok: true,
           checkedAt,
-          message: `No postings parsed from ${blocks.length} candidate blocks.`,
+          postingCount: 0,
         },
       };
     }
@@ -110,6 +115,40 @@ export async function scrapeGenericCareerPage(
   }
 }
 
+async function collectParsedPostings(
+  page: Page,
+  site: SiteConfig,
+  checkedAt: string,
+): Promise<{ blocks: CandidateBlock[]; postings: JobPosting[] }> {
+  let blocks: CandidateBlock[] = [];
+  let postings: JobPosting[] = [];
+
+  for (let attempt = 0; attempt <= ZERO_POSTING_RETRY_COUNT; attempt += 1) {
+    blocks = await collectCandidateBlocks(page);
+    postings = parseCandidateBlocks(site, blocks, checkedAt);
+    if (postings.length > 0) break;
+
+    const bodyText = await readBodyText(page);
+    if (attempt === ZERO_POSTING_RETRY_COUNT || !shouldRetryZeroPostingParse(site, bodyText)) {
+      break;
+    }
+
+    await page.waitForTimeout(1_000);
+  }
+
+  return { blocks, postings };
+}
+
+async function readBodyText(page: Page): Promise<string> {
+  return page.locator("body").innerText({ timeout: 1_000 }).catch(() => "");
+}
+
+function shouldRetryZeroPostingParse(site: SiteConfig, bodyText: string): boolean {
+  if (!site.defaultCompany) return false;
+  if (NO_ACTIVE_POSTINGS_PATTERN.test(bodyText)) return false;
+  return hasRequiredKeywords(bodyText, site.requiredKeywords);
+}
+
 function hasRequiredKeywords(text: string, requiredKeywords: string[]): boolean {
   return requiredKeywords.every((keyword) => keyword === "" || text.includes(keyword));
 }
@@ -132,7 +171,8 @@ function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: stri
   const title = selectTitleCandidate(titleCandidates);
   if (!title) return null;
 
-  const { startDate, endDate } = extractDateRange(block.text);
+  const { startDate, endDate: explicitEndDate } = extractDateRange(block.text);
+  const endDate = explicitEndDate ?? extractDdayEndDate(block.text, checkedAt);
   const posting: JobPosting = {
     id: buildPostingId(site.source, company, title, url),
     company,
@@ -174,6 +214,7 @@ function extractTitleCandidates(site: SiteConfig, text: string, company: Company
     .map((line) => line.trim().replace(/\s+/g, " "))
     .map(stripCareerLabel)
     .filter(Boolean)
+    .filter((line) => !isMetadataLine(line))
     .filter((line) => !site.requiredKeywords.some((keyword) => keyword !== "" && line === keyword))
     .filter((line) => !DATE_LINE_PATTERN.test(line))
     .filter((line) => !companyMarkers.some((marker) => line.includes(marker)))
@@ -197,8 +238,36 @@ function buildCompanyMarkers(site: SiteConfig, company: CompanyName): string[] {
   return [company, ...(matchingRule?.aliases ?? []), ...companyTokens].filter((marker) => marker !== "");
 }
 
+function isMetadataLine(line: string): boolean {
+  const compactLine = line.replace(/\s+/g, "");
+  return (
+    UI_LABEL_PATTERN.test(line) ||
+    D_DAY_LINE_PATTERN.test(line) ||
+    line.startsWith("#") ||
+    compactLine === "경력채용" ||
+    compactLine.endsWith("경력채용") ||
+    /^\d{1,2}월경력채용$/.test(compactLine)
+  );
+}
+
 function stripCareerLabel(line: string): string {
   return line.replace(CAREER_LABEL_PATTERN, "").replace(/^[\s:：\-|]+/, "").trim();
+}
+
+function extractDdayEndDate(text: string, checkedAt: string): string | null {
+  const match = text.match(D_DAY_TEXT_PATTERN);
+  if (!match) return null;
+
+  const daysRemaining = Number(match[1]);
+  if (!Number.isInteger(daysRemaining)) return null;
+
+  return addDaysToDateStamp(kstDateStamp(new Date(checkedAt)), daysRemaining);
+}
+
+function addDaysToDateStamp(dateStamp: string, days: number): string {
+  const [year, month, day] = dateStamp.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+  return date.toISOString().slice(0, 10);
 }
 
 function normalizeHttpUrl(value: string): string | null {
@@ -219,6 +288,38 @@ async function clickLoadMore(page: Page): Promise<void> {
     await loadMore.click({ timeout: 3_000 }).catch(() => undefined);
     await page.waitForTimeout(1_000);
   }
+}
+
+async function waitForPostingSignals(page: Page, site: SiteConfig): Promise<void> {
+  await page
+    .waitForFunction(buildPostingSignalScript(site.requiredKeywords), undefined, { timeout: 10_000 })
+    .catch(() => undefined);
+}
+
+function buildPostingSignalScript(requiredKeywords: string[]): string {
+  return `
+(() => {
+  const requiredKeywords = ${JSON.stringify(requiredKeywords)};
+  const candidateSelector = ${JSON.stringify(getCandidateSelector())};
+  const bodyText = document.body?.innerText || "";
+  const hasNoActivePostings = /0\\s*개의?\\s*채용\\s*공고|총\\s*0\\s*건/.test(bodyText);
+
+  function hasRequiredKeywords(text) {
+    return requiredKeywords.every((keyword) => keyword === "" || text.includes(keyword));
+  }
+
+  function hasDeadlineSignal(text) {
+    return /(?:^|\\n)\\s*D-\\s*\\d+\\s*(?=\\n|$)|20\\d{2}[.\\-/년\\s]+\\d{1,2}[.\\-/월\\s]+\\d{1,2}/.test(text);
+  }
+
+  const hasCandidatePosting = Array.from(document.querySelectorAll(candidateSelector)).some((element) => {
+    const text = element.innerText || "";
+    return text.length >= 12 && hasRequiredKeywords(text) && hasDeadlineSignal(text);
+  });
+
+  return hasNoActivePostings || hasCandidatePosting;
+})()
+`;
 }
 
 function getCandidateSelector(): string {
@@ -279,10 +380,6 @@ const COLLECT_CANDIDATE_BLOCKS_SCRIPT = String.raw`
       .filter((url) => url !== null);
   }
 
-  function hasAnchorHrefIn(element) {
-    return element.matches("a[href]") || element.querySelector("a[href]") !== null;
-  }
-
   function hasMultiplePostingChildren(element) {
     if (element.matches("a[href]")) return false;
 
@@ -314,7 +411,7 @@ const COLLECT_CANDIDATE_BLOCKS_SCRIPT = String.raw`
     if (text.length < 12 || text.length > 1200) continue;
 
     const anchorUrls = validAnchorUrlsIn(element);
-    const url = anchorUrls[0] || (hasAnchorHrefIn(element) ? null : resolveHttpUrl(location.href, location.href));
+    const url = anchorUrls[0] || resolveHttpUrl(location.href, location.href);
     if (!url) continue;
 
     const key = text + "|" + url;

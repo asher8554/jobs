@@ -1,4 +1,6 @@
 // 채용 사이트에서 추출한 텍스트 블록을 공통 공고 모델로 바꾸는 규칙을 검증한다.
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { describe, expect, it } from "vitest";
 import { chromium } from "playwright";
 import { parseCandidateBlocks, scrapeGenericCareerPage } from "../src/scrapers/generic.js";
@@ -11,6 +13,24 @@ const kiaConfig: SiteConfig = {
   companies: [],
   requiredKeywords: ["경력"],
   excludedKeywords: ["지원서"],
+};
+
+const hyundaiConfig: SiteConfig = {
+  source: "hyundai",
+  url: "https://talent.hyundai.com",
+  defaultCompany: "Hyundai Motor Company",
+  companies: [],
+  requiredKeywords: ["경력"],
+  excludedKeywords: [],
+};
+
+const mobisConfig: SiteConfig = {
+  source: "mobis",
+  url: "https://careers.mobis.com",
+  defaultCompany: "Hyundai Mobis",
+  companies: [],
+  requiredKeywords: ["경력"],
+  excludedKeywords: [],
 };
 
 const lgConfig: SiteConfig = {
@@ -71,9 +91,227 @@ describe("scrapeGenericCareerPage", () => {
       await browser.close();
     }
   }, 30_000);
+
+  it("returns zero postings successfully when the page states no active postings", async () => {
+    const browser = await chromium.launch();
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <main>0 개의 채용 공고가 현재 진행중입니다.</main>
+        </body>
+      </html>
+    `;
+
+    try {
+      const result = await scrapeGenericCareerPage(
+        browser,
+        {
+          ...mobisConfig,
+          url: `data:text/html;charset=utf-8,${encodeURIComponent(html)}`,
+        },
+        "2026-05-30T00:00:00.000Z",
+      );
+
+      expect(result.status).toMatchObject({
+        source: "mobis",
+        ok: true,
+        postingCount: 0,
+      });
+      expect(result.postings).toEqual([]);
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+
+  it("returns zero postings successfully when target-company filters find no rows", async () => {
+    const browser = await chromium.launch();
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <main>
+            <ul>
+              <li>
+                <a href="https://careers.lg.com/job/non-target">
+                  LG화학<br>
+                  경력<br>
+                  소재 연구원<br>
+                  2026.05.30 ~ 2026.06.06
+                </a>
+              </li>
+            </ul>
+          </main>
+        </body>
+      </html>
+    `;
+
+    try {
+      const result = await scrapeGenericCareerPage(
+        browser,
+        {
+          ...lgConfig,
+          url: `data:text/html;charset=utf-8,${encodeURIComponent(html)}`,
+        },
+        "2026-05-30T00:00:00.000Z",
+      );
+
+      expect(result.status).toMatchObject({
+        source: "lg",
+        ok: true,
+        postingCount: 0,
+      });
+      expect(result.postings).toEqual([]);
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+
+  it("waits for delayed posting rows after early navigation selectors exist", async () => {
+    const browser = await chromium.launch();
+    const postingUrl = "https://career.kia.com/job/delayed";
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <nav><ul><li>Navigation</li></ul></nav>
+          <main><ul id="jobs"></ul></main>
+          <script>
+            setTimeout(() => {
+              document.querySelector("#jobs").innerHTML =
+                '<li><a href="${postingUrl}">경력<br>Delayed Engineer<br>2026.05.30 ~ 2026.06.06</a></li>';
+            }, 1000);
+          </script>
+        </body>
+      </html>
+    `;
+
+    try {
+      const result = await scrapeGenericCareerPage(
+        browser,
+        {
+          ...kiaConfig,
+          url: `data:text/html;charset=utf-8,${encodeURIComponent(html)}`,
+        },
+        "2026-05-30T00:00:00.000Z",
+      );
+
+      expect(result.status).toMatchObject({
+        source: "kia",
+        ok: true,
+        postingCount: 1,
+      });
+      expect(result.postings[0]).toMatchObject({
+        company: "Kia",
+        title: "Delayed Engineer",
+        endDate: "2026-06-06",
+      });
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+
+  it("scrapes Hyundai-style javascript-only posting anchors with the page URL fallback", async () => {
+    const browser = await chromium.launch();
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <main>
+            <ul class="apply__list">
+              <li>
+                <span>5월 경력채용</span>
+                <button>공유</button>
+                <a href="javascript:void(0)">
+                  <div class="top"><strong>제조경쟁력 강화 전략 수립</strong></div>
+                  <div>D-1</div>
+                  <span>#사업/기획</span>
+                  <span>#경영전략</span>
+                  <span>#양재본사</span>
+                  <span>#경력</span>
+                  <span>#5월 경력 채용</span>
+                </a>
+              </li>
+            </ul>
+          </main>
+        </body>
+      </html>
+    `;
+
+    try {
+      await withHtmlServer(html, async (url) => {
+        const result = await scrapeGenericCareerPage(
+          browser,
+          {
+            ...hyundaiConfig,
+            url,
+          },
+          "2026-05-30T00:00:00.000Z",
+        );
+
+        expect(result.status).toMatchObject({
+          source: "hyundai",
+          ok: true,
+          postingCount: 1,
+        });
+        expect(result.postings).toHaveLength(1);
+        expect(result.postings[0]).toMatchObject({
+          company: "Hyundai Motor Company",
+          title: "제조경쟁력 강화 전략 수립",
+          endDate: "2026-05-31",
+          url,
+        });
+      });
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
 });
 
 describe("parseCandidateBlocks", () => {
+  it("parses Hyundai live-style career cards with D-day deadlines", () => {
+    const result = parseCandidateBlocks(hyundaiConfig, [{
+      text: [
+        "5월 경력채용",
+        "",
+        "  공유",
+        "제조경쟁력 강화 전략 수립",
+        "D-1",
+        "#사업/기획",
+        "#경영전략",
+        "#양재본사",
+        "#경력",
+        "#5월 경력 채용",
+      ].join("\n"),
+      url: "https://talent.hyundai.com/job/1",
+    }], "2026-05-30T00:00:00.000Z");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      company: "Hyundai Motor Company",
+      title: "제조경쟁력 강화 전략 수립",
+      endDate: "2026-05-31",
+      source: "hyundai",
+    });
+  });
+
+  it("uses the checkedAt KST date for D-0 deadlines", () => {
+    const result = parseCandidateBlocks(hyundaiConfig, [{
+      text: [
+        "[경력] 커넥티드카 서비스 기획",
+        "D-0",
+        "#경력",
+      ].join("\n"),
+      url: "https://talent.hyundai.com/job/d-day-zero",
+    }], "2026-05-30T00:00:00.000Z");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      title: "커넥티드카 서비스 기획",
+      endDate: "2026-05-30",
+    });
+  });
+
   it("parses implicit-company career postings", () => {
     const result = parseCandidateBlocks(kiaConfig, [{
       text: "경력\n플랫폼 개발자\n접수기간 2026.05.30 ~ 2026.06.06",
@@ -187,3 +425,30 @@ describe("parseCandidateBlocks", () => {
     expect(result).toEqual([]);
   });
 });
+
+async function withHtmlServer(html: string, run: (url: string) => Promise<void>): Promise<void> {
+  const server = createServer((_, response) => {
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.end(html);
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", resolve);
+  });
+
+  const address = server.address() as AddressInfo;
+  try {
+    await run(`http://127.0.0.1:${address.port}/apply`);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+  }
+}

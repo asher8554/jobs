@@ -37,3 +37,12 @@
 - Validation completed: scoped scraper test exited 0 with 10 tests passed; full test suite exited 0 with 9 files and 64 tests passed; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=0 sources=5 failed=5`.
 - Live update failure messages no longer mention `__name`; the generated status page reported site/parser-specific failures: 14, 7, 20, and 171 candidate blocks parsed into no postings, plus one source with no candidate blocks.
 - Generated `public/` output from validation was removed again so it is not included in the fix commit.
+
+## 2026-05-30 Live Parser Mismatch After `__name` Fix
+
+- Root cause evidence from live samples points to generic title extraction treating card metadata as title candidates: campaign labels such as `5월 경력채용`, UI labels such as `공유`, D-day lines such as `D-1`, and hashtag metadata all survive the current filters.
+- Hyundai has a default company, so multiple title candidates make one real posting block look ambiguous and get rejected by `isAmbiguousDefaultCompanyBlock`.
+- Current zero-result status policy marks sources failed when parser filters find no target postings. That is too strict for current live pages where target-company or career postings can validly be zero.
+- Additional live tracing showed Hyundai posting cards use `javascript:void(0)` anchors and render after the initial navigation/filter elements. The generic collector needs a page-URL fallback plus bounded delayed-row handling for default-company sites.
+- Final validation completed: scoped scraper test exited 0 with 16 tests passed; full suite exited 0 with 9 files and 70 tests passed; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=8 sources=5 failed=0`.
+- Live snapshot source counts were Samsung 0, Hyundai 8, Kia 0, Mobis 0, and LG 0. Hyundai included `제조경쟁력 강화 전략 수립` with end date `2026-05-31`.

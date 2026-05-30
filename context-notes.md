@@ -63,3 +63,4 @@
 - LG Careers uses text-only MUI cards that are not anchors or list items, so the generic scraper now has a line-based fallback for `company -> title -> D-day/date` blocks.
 - The LG fallback was tightened after a false-positive check so repeated metadata company lines cannot attach the following non-target career card.
 - Final validation passed with 9 test files and 78 tests, then `tsc --noEmit`, then live update. Live update reported `postings=13 sources=5 failed=0`: Hyundai 8, LG 5, Samsung/Kia/Mobis 0.
+- After merging to main, Vitest initially picked up the nested `.worktrees/` copy and ran tests twice, so `vitest.config.ts` now excludes `.worktrees/**`. Main validation then passed with 9 test files and 78 tests, followed by `tsc --noEmit`.

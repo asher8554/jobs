@@ -17,11 +17,25 @@ describe("date helpers", () => {
     });
   });
 
+  it.each(["채용시까지", "상시채용", "상시"])(
+    "extracts single date with %s as open-ended startDate",
+    (marker) => {
+      expect(extractDateRange(`2025-04-23 15:00 ~ ${marker}`)).toEqual({
+        startDate: "2025-04-23",
+        endDate: null,
+      });
+    },
+  );
+
   it("calculates days until deadline using UTC date parts", () => {
     expect(daysUntil("2026-06-06", "2026-05-30")).toBe(7);
   });
 
   it("formats KST date stamp", () => {
     expect(kstDateStamp(new Date("2026-05-30T00:30:00.000Z"))).toBe("2026-05-30");
+  });
+
+  it("formats KST date stamp after UTC day rollover", () => {
+    expect(kstDateStamp(new Date("2026-05-29T15:00:00.000Z"))).toBe("2026-05-30");
   });
 });

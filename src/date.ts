@@ -4,6 +4,8 @@ export type DateRange = {
   endDate: string | null;
 };
 
+const OPEN_ENDED_MARKER_PATTERN = /채용시까지|상시채용|상시/;
+
 export function normalizeDateText(value: string): string | null {
   const match = value.match(/(20\d{2})[.\-/년\s]+(\d{1,2})[.\-/월\s]+(\d{1,2})/);
   if (!match) return null;
@@ -22,6 +24,10 @@ export function extractDateRange(text: string): DateRange {
   }
 
   if (matches.length === 1) {
+    if (OPEN_ENDED_MARKER_PATTERN.test(text)) {
+      return { startDate: matches[0], endDate: null };
+    }
+
     return { startDate: null, endDate: matches[0] };
   }
 

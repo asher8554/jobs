@@ -4,7 +4,7 @@ export type DateRange = {
   endDate: string | null;
 };
 
-const OPEN_ENDED_MARKER_PATTERN = /채용시까지|상시채용|상시/;
+const OPEN_ENDED_MARKER_PATTERN = /채용\s*시\s*까지|상시채용|상시/;
 
 export function normalizeDateText(value: string): string | null {
   const match = value.match(/(20\d{2})[.\-/년\s]+(\d{1,2})[.\-/월\s]+(\d{1,2})/);

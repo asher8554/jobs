@@ -17,7 +17,7 @@ describe("date helpers", () => {
     });
   });
 
-  it.each(["채용시까지", "상시채용", "상시"])(
+  it.each(["채용시까지", "채용 시까지", "상시채용", "상시"])(
     "extracts single date with %s as open-ended startDate",
     (marker) => {
       expect(extractDateRange(`2025-04-23 15:00 ~ ${marker}`)).toEqual({

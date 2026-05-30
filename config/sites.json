@@ -1,0 +1,48 @@
+[
+  {
+    "source": "samsung",
+    "url": "https://www.samsungcareers.com/hr/?ty=B",
+    "defaultCompany": null,
+    "companies": [
+      { "name": "Samsung Electronics DX", "aliases": ["삼성전자 DX", "삼성전자 DX부문", "DX부문"] },
+      { "name": "Samsung Electronics DS", "aliases": ["삼성전자 DS", "삼성전자 DS부문", "DS부문"] }
+    ],
+    "requiredKeywords": ["경력"],
+    "excludedKeywords": ["관계사 선택", "지원 가이드", "나의 지원서", "회원가입"]
+  },
+  {
+    "source": "hyundai",
+    "url": "https://talent.hyundai.com/apply/applyList.hc",
+    "defaultCompany": "Hyundai Motor Company",
+    "companies": [],
+    "requiredKeywords": ["경력"],
+    "excludedKeywords": ["마이페이지", "지원서"]
+  },
+  {
+    "source": "kia",
+    "url": "https://career.kia.com/apply/applyList.kc",
+    "defaultCompany": "Kia",
+    "companies": [],
+    "requiredKeywords": ["경력"],
+    "excludedKeywords": ["마이페이지", "지원서"]
+  },
+  {
+    "source": "mobis",
+    "url": "https://careers.mobis.com/jobs",
+    "defaultCompany": "Hyundai Mobis",
+    "companies": [],
+    "requiredKeywords": ["경력"],
+    "excludedKeywords": ["Life", "People", "Story", "Guide"]
+  },
+  {
+    "source": "lg",
+    "url": "https://careers.lg.com/apply",
+    "defaultCompany": null,
+    "companies": [
+      { "name": "LG Electronics", "aliases": ["LG전자", "엘지전자"] },
+      { "name": "LG Energy Solution", "aliases": ["LG에너지솔루션", "LG Energy Solution"] }
+    ],
+    "requiredKeywords": ["경력"],
+    "excludedKeywords": ["로그인", "지원서", "FAQ"]
+  }
+]

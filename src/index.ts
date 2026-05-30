@@ -7,6 +7,7 @@ import { generateHtml } from "./generate-html.js";
 import { kstDateStamp } from "./date.js";
 import { scrapeAllSites } from "./scrapers/index.js";
 import { buildSnapshot, preserveFirstSeen, readSnapshot, writeHistory, writeSnapshot } from "./storage.js";
+import type { JobPosting, SourceStatus } from "./model.js";
 
 export async function main(): Promise<void> {
   const checkedAt = new Date().toISOString();
@@ -17,7 +18,7 @@ export async function main(): Promise<void> {
   const anySuccess = scraped.sources.some((source) => source.ok);
 
   const currentPostings = anySuccess
-    ? preserveFirstSeen(previous?.postings ?? [], scraped.postings)
+    ? mergeScrapedPostings(previous?.postings ?? [], scraped.postings, scraped.sources)
     : previous?.postings ?? [];
   const snapshot = buildSnapshot(checkedAt, currentPostings, scraped.sources);
   const diff = diffPostings(previous?.postings ?? [], snapshot.postings, today);
@@ -47,4 +48,16 @@ if (isCliEntryPoint(process.argv[1])) {
 
 function isCliEntryPoint(entryPath: string | undefined): boolean {
   return entryPath !== undefined && import.meta.url === pathToFileURL(entryPath).href;
+}
+
+function mergeScrapedPostings(
+  previous: JobPosting[],
+  scrapedPostings: JobPosting[],
+  sources: SourceStatus[],
+): JobPosting[] {
+  const failedSources = new Set(sources.filter((source) => !source.ok).map((source) => source.source));
+  const scrapedIds = new Set(scrapedPostings.map((posting) => posting.id));
+  const carriedPostings = previous.filter((posting) => failedSources.has(posting.source) && !scrapedIds.has(posting.id));
+
+  return preserveFirstSeen(previous, [...scrapedPostings, ...carriedPostings]);
 }

@@ -91,6 +91,27 @@ describe("snapshot storage", () => {
     ]);
   });
 
+  it("preserves firstSeenAt when a unique posting gets a new generated id", () => {
+    const previous = [job({
+      id: "legacy-id",
+      firstSeenAt: "2026-05-01T00:00:00.000Z",
+      title: "Same Posting",
+    })];
+    const current = [job({
+      id: "stable-id",
+      firstSeenAt: "2026-05-30T00:00:00.000Z",
+      title: "Same Posting",
+    })];
+
+    expect(preserveFirstSeen(previous, current)).toEqual([
+      job({
+        id: "stable-id",
+        firstSeenAt: "2026-05-01T00:00:00.000Z",
+        title: "Same Posting",
+      }),
+    ]);
+  });
+
   it("builds snapshots sorted by company, end date, and title", () => {
     const postings = [
       job({ id: "c", company: "Kia", endDate: "2026-06-07", title: "C" }),

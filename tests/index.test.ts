@@ -28,6 +28,15 @@ const kiaSite: SiteConfig = {
   excludedKeywords: [],
 };
 
+const hyundaiSite: SiteConfig = {
+  source: "hyundai",
+  url: "https://example.com/hyundai",
+  defaultCompany: "Hyundai Motor Company",
+  companies: [],
+  requiredKeywords: ["career"],
+  excludedKeywords: [],
+};
+
 function posting(overrides: Partial<JobPosting> = {}): JobPosting {
   return {
     id: "kia-platform-engineer",
@@ -108,5 +117,60 @@ describe("CLI entry point", () => {
     await expect(readFile(join(dir, "data", "history", "2026-05-30.json"), "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  it("carries forward previous postings for sources that fail during a partial scrape", async () => {
+    const previousKiaPosting = posting({
+      firstSeenAt: "2026-05-29T00:00:00.000Z",
+      lastSeenAt: "2026-05-29T00:00:00.000Z",
+    });
+    const currentHyundaiPosting = posting({
+      id: "hyundai-strategy-manager",
+      company: "Hyundai Motor Company",
+      title: "Strategy Manager",
+      url: "https://example.com/hyundai/jobs/1",
+      source: "hyundai",
+      contentHash: "hyundai-hash",
+    });
+    const previous: Snapshot = {
+      checkedAt: "2026-05-29T00:00:00.000Z",
+      postings: [previousKiaPosting, posting({
+        ...currentHyundaiPosting,
+        firstSeenAt: "2026-05-29T00:00:00.000Z",
+        lastSeenAt: "2026-05-29T00:00:00.000Z",
+      })],
+      sources: [
+        { source: "kia", ok: true, checkedAt: "2026-05-29T00:00:00.000Z", postingCount: 1 },
+        { source: "hyundai", ok: true, checkedAt: "2026-05-29T00:00:00.000Z", postingCount: 1 },
+      ],
+    };
+    await mkdir(join(dir, "data"), { recursive: true });
+    await writeFile(join(dir, "data", "snapshot.json"), `${JSON.stringify(previous, null, 2)}\n`, "utf8");
+    vi.mocked(loadSiteConfigs).mockResolvedValue([kiaSite, hyundaiSite]);
+    vi.mocked(scrapeAllSites).mockResolvedValue({
+      postings: [currentHyundaiPosting],
+      sources: [
+        { source: "kia", ok: false, checkedAt, message: "network failed" },
+        { source: "hyundai", ok: true, checkedAt, postingCount: 1 },
+      ],
+    });
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    await main();
+
+    const snapshot = JSON.parse(await readFile(join(dir, "data", "snapshot.json"), "utf8")) as Snapshot;
+    expect(snapshot.postings.map((item) => item.id).sort()).toEqual([
+      "hyundai-strategy-manager",
+      "kia-platform-engineer",
+    ]);
+    expect(snapshot.postings.find((item) => item.id === "kia-platform-engineer")).toMatchObject({
+      firstSeenAt: "2026-05-29T00:00:00.000Z",
+      lastSeenAt: "2026-05-29T00:00:00.000Z",
+      source: "kia",
+    });
+    expect(snapshot.sources).toEqual([
+      { source: "kia", ok: false, checkedAt, message: "network failed" },
+      { source: "hyundai", ok: true, checkedAt, postingCount: 1 },
+    ]);
   });
 });

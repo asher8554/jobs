@@ -29,3 +29,13 @@
 - [x] Run scoped generic scraper test.
 - [x] Run full tests, build, and live update.
 - [x] Commit parser fix.
+
+## Final Review Fixes
+
+- [x] Add regression tests for partial scrape failure, ambiguous zero results, and fallback URLs.
+- [x] Preserve previous postings for failed sources during partial runs.
+- [x] Tighten zero-posting success policy.
+- [x] Stabilize IDs for JavaScript-only list URL fallbacks.
+- [x] Preserve posting history across generated ID migrations.
+- [x] Run full tests, build, and live update.
+- [x] Commit final review fixes.

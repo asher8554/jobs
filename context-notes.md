@@ -52,3 +52,14 @@
 - Final local verification passed with 9 test files and 70 tests, then `tsc --noEmit`, then live update.
 - Initial live update generated `data/snapshot.json`, `data/history/2026-05-30.json`, `public/index.html`, and `public/.nojekyll`.
 - Initial generated dashboard contains 8 active Hyundai Motor Company career postings and 0 failed sources.
+
+## 2026-05-30 Final Review Fixes
+
+- Added regression coverage for partial scrape failure, parser-zero ambiguity, JavaScript-only page URL fallbacks, and generated ID migration.
+- Partial runs now carry forward previous postings for failed sources so a transient source failure does not erase that source from the committed snapshot.
+- Zero-posting status is now success only when the page explicitly reports no postings, no career rows are present, or target-company filters confidently find no rows. Required-keyword blocks that cannot be parsed are recorded as source failures.
+- JavaScript-only posting cards still link to the list page, but generated IDs and content hashes use a query-stripped identity URL so filter query churn does not create false new postings.
+- Diffing and `firstSeenAt` preservation now match unique postings by source, company, and normalized title when generated IDs change.
+- LG Careers uses text-only MUI cards that are not anchors or list items, so the generic scraper now has a line-based fallback for `company -> title -> D-day/date` blocks.
+- The LG fallback was tightened after a false-positive check so repeated metadata company lines cannot attach the following non-target career card.
+- Final validation passed with 9 test files and 78 tests, then `tsc --noEmit`, then live update. Live update reported `postings=13 sources=5 failed=0`: Hyundai 8, LG 5, Samsung/Kia/Mobis 0.

@@ -167,6 +167,165 @@ describe("scrapeGenericCareerPage", () => {
     }
   }, 30_000);
 
+  it("scrapes LG-style text-only cards from line-based page content", async () => {
+    const browser = await chromium.launch();
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <main>
+            <div>
+              <div>LG에너지솔루션</div>
+              <div>[ESS전지] ESS 시스템 개발 경력 모집</div>
+              <div>D-17</div>
+              <div>2026.06.16 23:00</div>
+              <div>경력</div>
+              <div>LG에너지솔루션</div>
+              <div>연구/개발</div>
+            </div>
+          </main>
+        </body>
+      </html>
+    `;
+
+    try {
+      await withHtmlServer(html, async (url) => {
+        const result = await scrapeGenericCareerPage(
+          browser,
+          {
+            ...lgConfig,
+            companies: [
+              { name: "LG Electronics", aliases: ["LG전자"] },
+              { name: "LG Energy Solution", aliases: ["LG에너지솔루션"] },
+            ],
+            requiredKeywords: ["경력"],
+            excludedKeywords: [],
+            url,
+          },
+          "2026-05-30T00:00:00.000Z",
+        );
+
+        expect(result.status).toMatchObject({
+          source: "lg",
+          ok: true,
+          postingCount: 1,
+        });
+        expect(result.postings[0]).toMatchObject({
+          company: "LG Energy Solution",
+          title: "[ESS전지] ESS 시스템 개발 경력 모집",
+          endDate: "2026-06-16",
+          url,
+        });
+      });
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+
+  it("does not attach a following non-target career card to a repeated target-company metadata line", async () => {
+    const browser = await chromium.launch();
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <main>
+            <div>LG전자</div>
+            <div>2026년 LG전자 채용계약학과 모집</div>
+            <div>D-15</div>
+            <div>2026.06.14 23:00</div>
+            <div>산학장학생</div>
+            <div>LG전자</div>
+            <div>연구/개발</div>
+            <div>하이엠솔루텍</div>
+            <div>[정규직] HVAC 설비공사 PM 담당자 모집(김해)</div>
+            <div>D-1</div>
+            <div>2026.05.31 23:00</div>
+            <div>경력</div>
+            <div>하이엠솔루텍</div>
+            <div>고객서비스</div>
+            <div>LG에너지솔루션</div>
+            <div>[ESS전지] ESS 시스템 개발 경력 모집</div>
+            <div>D-17</div>
+            <div>2026.06.16 23:00</div>
+            <div>경력</div>
+            <div>LG에너지솔루션</div>
+            <div>연구/개발</div>
+          </main>
+        </body>
+      </html>
+    `;
+
+    try {
+      await withHtmlServer(html, async (url) => {
+        const result = await scrapeGenericCareerPage(
+          browser,
+          {
+            ...lgConfig,
+            companies: [
+              { name: "LG Electronics", aliases: ["LG전자"] },
+              { name: "LG Energy Solution", aliases: ["LG에너지솔루션"] },
+            ],
+            requiredKeywords: ["경력"],
+            excludedKeywords: [],
+            url,
+          },
+          "2026-05-30T00:00:00.000Z",
+        );
+
+        expect(result.status).toMatchObject({
+          source: "lg",
+          ok: true,
+          postingCount: 1,
+        });
+        expect(result.postings.map((posting) => posting.title)).toEqual(["[ESS전지] ESS 시스템 개발 경력 모집"]);
+      });
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+
+  it("marks required-keyword rows that cannot be parsed as a scrape failure", async () => {
+    const browser = await chromium.launch();
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <main>
+            <ul>
+              <li>
+                <a href="https://career.kia.com/job/broken">
+                  Career<br>
+                  2026.05.30 ~ 2026.06.06
+                </a>
+              </li>
+            </ul>
+          </main>
+        </body>
+      </html>
+    `;
+
+    try {
+      const result = await scrapeGenericCareerPage(
+        browser,
+        {
+          ...kiaConfig,
+          url: `data:text/html;charset=utf-8,${encodeURIComponent(html)}`,
+          requiredKeywords: ["Career"],
+          excludedKeywords: [],
+        },
+        "2026-05-30T00:00:00.000Z",
+      );
+
+      expect(result.status).toMatchObject({
+        source: "kia",
+        ok: false,
+      });
+      expect(result.postings).toEqual([]);
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+
   it("waits for delayed posting rows after early navigation selectors exist", async () => {
     const browser = await chromium.launch();
     const postingUrl = "https://career.kia.com/job/delayed";
@@ -310,6 +469,37 @@ describe("parseCandidateBlocks", () => {
       title: "커넥티드카 서비스 기획",
       endDate: "2026-05-30",
     });
+  });
+
+  it("uses stable IDs and hashes for page URL fallback blocks", () => {
+    const text = [
+      "Career",
+      "JavaScript Only Engineer",
+      "D-1",
+    ].join("\n");
+    const first = parseCandidateBlocks(
+      { ...hyundaiConfig, requiredKeywords: ["Career"] },
+      [{
+        text,
+        url: "https://talent.hyundai.com/apply?tab=jobs",
+        urlIsPageFallback: true,
+      }],
+      "2026-05-30T00:00:00.000Z",
+    )[0];
+    const second = parseCandidateBlocks(
+      { ...hyundaiConfig, requiredKeywords: ["Career"] },
+      [{
+        text,
+        url: "https://talent.hyundai.com/apply?tab=changed",
+        urlIsPageFallback: true,
+      }],
+      "2026-05-30T00:00:00.000Z",
+    )[0];
+
+    expect(first.url).toBe("https://talent.hyundai.com/apply?tab=jobs");
+    expect(second.url).toBe("https://talent.hyundai.com/apply?tab=changed");
+    expect(first.id).toBe(second.id);
+    expect(first.contentHash).toBe(second.contentHash);
   });
 
   it("parses implicit-company career postings", () => {

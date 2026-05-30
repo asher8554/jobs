@@ -8,6 +8,7 @@ import type { CompanyName, JobPosting, SourceStatus } from "../model.js";
 export type CandidateBlock = {
   text: string;
   url: string;
+  urlIsPageFallback?: boolean;
 };
 
 export type ScrapeOutput = {
@@ -67,27 +68,10 @@ export async function scrapeGenericCareerPage(
     await waitForPostingSignals(page, site);
 
     const { blocks, postings } = await collectParsedPostings(page, site, checkedAt);
-    if (blocks.length === 0) {
-      return {
-        postings: [],
-        status: {
-          source: site.source,
-          ok: true,
-          checkedAt,
-          postingCount: 0,
-        },
-      };
-    }
-
     if (postings.length === 0) {
       return {
         postings: [],
-        status: {
-          source: site.source,
-          ok: true,
-          checkedAt,
-          postingCount: 0,
-        },
+        status: buildZeroPostingStatus(site, blocks, await readBodyText(page), checkedAt),
       };
     }
 
@@ -125,10 +109,11 @@ async function collectParsedPostings(
 
   for (let attempt = 0; attempt <= ZERO_POSTING_RETRY_COUNT; attempt += 1) {
     blocks = await collectCandidateBlocks(page);
+    const bodyText = await readBodyText(page);
+    blocks = mergeCandidateBlocks(blocks, collectLineBasedCandidateBlocks(site, bodyText, page.url()));
     postings = parseCandidateBlocks(site, blocks, checkedAt);
     if (postings.length > 0) break;
 
-    const bodyText = await readBodyText(page);
     if (attempt === ZERO_POSTING_RETRY_COUNT || !shouldRetryZeroPostingParse(site, bodyText)) {
       break;
     }
@@ -139,6 +124,66 @@ async function collectParsedPostings(
   return { blocks, postings };
 }
 
+function mergeCandidateBlocks(primary: CandidateBlock[], fallback: CandidateBlock[]): CandidateBlock[] {
+  const seen = new Set(primary.map((block) => buildCandidateBlockKey(block)));
+
+  for (const block of fallback) {
+    const key = buildCandidateBlockKey(block);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    primary.push(block);
+  }
+
+  return primary;
+}
+
+function buildCandidateBlockKey(block: CandidateBlock): string {
+  return `${block.text}|${block.url}|${block.urlIsPageFallback ? "fallback" : "link"}`;
+}
+
+function collectLineBasedCandidateBlocks(site: SiteConfig, bodyText: string, pageUrl: string): CandidateBlock[] {
+  const url = normalizeHttpUrl(pageUrl);
+  if (!url) return [];
+
+  const companyMarkers = buildSiteCompanyMarkers(site);
+  if (companyMarkers.length === 0) return [];
+
+  const lines = bodyText
+    .split(/\n+/)
+    .map((line) => line.trim().replace(/\s+/g, " "))
+    .filter(Boolean);
+  const blocks: CandidateBlock[] = [];
+
+  for (let index = 0; index < lines.length - 2; index += 1) {
+    if (!companyMarkers.some((marker) => lines[index] === marker)) continue;
+
+    const blockLines = lines.slice(index, index + 8);
+    if (!looksLikeLineBasedPosting(blockLines, site.requiredKeywords)) continue;
+
+    blocks.push({
+      text: blockLines.join("\n"),
+      url,
+      urlIsPageFallback: true,
+    });
+  }
+
+  return blocks;
+}
+
+function looksLikeLineBasedPosting(lines: string[], requiredKeywords: string[]): boolean {
+  const titleLine = lines[1] ?? "";
+  if (titleLine.length < 4 || isMetadataLine(titleLine) || DATE_LINE_PATTERN.test(titleLine)) return false;
+  if (!lines.slice(2, 4).some((line) => D_DAY_LINE_PATTERN.test(line) || DATE_LINE_PATTERN.test(line))) return false;
+
+  return hasRequiredKeywords(lines.join("\n"), requiredKeywords);
+}
+
+function buildSiteCompanyMarkers(site: SiteConfig): string[] {
+  if (site.defaultCompany) return [site.defaultCompany];
+
+  return site.companies.flatMap((company) => [company.name, ...company.aliases]).filter((marker) => marker !== "");
+}
+
 async function readBodyText(page: Page): Promise<string> {
   return page.locator("body").innerText({ timeout: 1_000 }).catch(() => "");
 }
@@ -147,6 +192,60 @@ function shouldRetryZeroPostingParse(site: SiteConfig, bodyText: string): boolea
   if (!site.defaultCompany) return false;
   if (NO_ACTIVE_POSTINGS_PATTERN.test(bodyText)) return false;
   return hasRequiredKeywords(bodyText, site.requiredKeywords);
+}
+
+function buildZeroPostingStatus(
+  site: SiteConfig,
+  blocks: CandidateBlock[],
+  bodyText: string,
+  checkedAt: string,
+): SourceStatus {
+  if (NO_ACTIVE_POSTINGS_PATTERN.test(bodyText)) {
+    return {
+      source: site.source,
+      ok: true,
+      checkedAt,
+      postingCount: 0,
+    };
+  }
+
+  if (blocks.length === 0) {
+    return {
+      source: site.source,
+      ok: false,
+      checkedAt,
+      message: "No candidate posting blocks were found.",
+    };
+  }
+
+  const relevantBlocks = blocks.filter(
+    (block) =>
+      hasRequiredKeywords(block.text, site.requiredKeywords) && !hasExcludedKeyword(block.text, site.excludedKeywords),
+  );
+  if (relevantBlocks.length === 0) {
+    return {
+      source: site.source,
+      ok: true,
+      checkedAt,
+      postingCount: 0,
+    };
+  }
+
+  if (!site.defaultCompany && relevantBlocks.every((block) => detectCompanies(site, block.text).length === 0)) {
+    return {
+      source: site.source,
+      ok: true,
+      checkedAt,
+      postingCount: 0,
+    };
+  }
+
+  return {
+    source: site.source,
+    ok: false,
+    checkedAt,
+    message: "Candidate posting blocks were found but no postings could be parsed.",
+  };
 }
 
 function hasRequiredKeywords(text: string, requiredKeywords: string[]): boolean {
@@ -160,6 +259,7 @@ function hasExcludedKeyword(text: string, excludedKeywords: string[]): boolean {
 function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: string): JobPosting | null {
   const url = normalizeHttpUrl(block.url);
   if (!url) return null;
+  const identityUrl = block.urlIsPageFallback ? buildFallbackIdentityUrl(url) : url;
 
   const companies = detectCompanies(site, block.text);
   if (companies.length !== 1) return null;
@@ -174,7 +274,7 @@ function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: stri
   const { startDate, endDate: explicitEndDate } = extractDateRange(block.text);
   const endDate = explicitEndDate ?? extractDdayEndDate(block.text, checkedAt);
   const posting: JobPosting = {
-    id: buildPostingId(site.source, company, title, url),
+    id: buildPostingId(site.source, company, title, identityUrl),
     company,
     title,
     careerType: "career",
@@ -189,7 +289,7 @@ function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: stri
 
   return {
     ...posting,
-    contentHash: buildContentHash(posting),
+    contentHash: buildContentHash({ ...posting, url: identityUrl }),
   };
 }
 
@@ -280,6 +380,11 @@ function normalizeHttpUrl(value: string): string | null {
   }
 }
 
+function buildFallbackIdentityUrl(value: string): string {
+  const url = new URL(value);
+  return `${url.origin}${url.pathname}`;
+}
+
 async function clickLoadMore(page: Page): Promise<void> {
   for (let i = 0; i < 5; i += 1) {
     const loadMore = page.getByText(LOAD_MORE_TEXT_PATTERN).first();
@@ -292,14 +397,15 @@ async function clickLoadMore(page: Page): Promise<void> {
 
 async function waitForPostingSignals(page: Page, site: SiteConfig): Promise<void> {
   await page
-    .waitForFunction(buildPostingSignalScript(site.requiredKeywords), undefined, { timeout: 10_000 })
+    .waitForFunction(buildPostingSignalScript(site), undefined, { timeout: 10_000 })
     .catch(() => undefined);
 }
 
-function buildPostingSignalScript(requiredKeywords: string[]): string {
+function buildPostingSignalScript(site: SiteConfig): string {
   return `
 (() => {
-  const requiredKeywords = ${JSON.stringify(requiredKeywords)};
+  const requiredKeywords = ${JSON.stringify(site.requiredKeywords)};
+  const companyMarkers = ${JSON.stringify(buildSiteCompanyMarkers(site))};
   const candidateSelector = ${JSON.stringify(getCandidateSelector())};
   const bodyText = document.body?.innerText || "";
   const hasNoActivePostings = /0\\s*개의?\\s*채용\\s*공고|총\\s*0\\s*건/.test(bodyText);
@@ -317,7 +423,13 @@ function buildPostingSignalScript(requiredKeywords: string[]): string {
     return text.length >= 12 && hasRequiredKeywords(text) && hasDeadlineSignal(text);
   });
 
-  return hasNoActivePostings || hasCandidatePosting;
+  const hasLineBasedPosting =
+    companyMarkers.length > 0 &&
+    companyMarkers.some((marker) => marker !== "" && bodyText.includes(marker)) &&
+    hasRequiredKeywords(bodyText) &&
+    hasDeadlineSignal(bodyText);
+
+  return hasNoActivePostings || hasCandidatePosting || hasLineBasedPosting;
 })()
 `;
 }
@@ -411,6 +523,7 @@ const COLLECT_CANDIDATE_BLOCKS_SCRIPT = String.raw`
     if (text.length < 12 || text.length > 1200) continue;
 
     const anchorUrls = validAnchorUrlsIn(element);
+    const urlIsPageFallback = anchorUrls.length === 0;
     const url = anchorUrls[0] || resolveHttpUrl(location.href, location.href);
     if (!url) continue;
 
@@ -418,7 +531,7 @@ const COLLECT_CANDIDATE_BLOCKS_SCRIPT = String.raw`
     if (seen.has(key)) continue;
 
     seen.add(key);
-    blocks.push({ text, url });
+    blocks.push({ text, url, urlIsPageFallback });
   }
 
   return blocks;

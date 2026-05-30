@@ -1,6 +1,7 @@
 // 이전 스냅샷과 현재 스냅샷을 비교해 화면 표시용 변경 목록을 만든다.
 import { daysUntil } from "./date.js";
 import type { DiffResult, JobPosting } from "./model.js";
+import { buildUniqueNaturalKeyMap, findNaturalKeyMatch } from "./posting-key.js";
 
 function buildPostingMap(postings: JobPosting[]): Map<string, JobPosting> {
   const postingsById = new Map<string, JobPosting>();
@@ -23,13 +24,20 @@ export function diffPostings(
 ): DiffResult {
   const previousById = buildPostingMap(previous);
   const currentById = buildPostingMap(current);
+  const previousByNaturalKey = buildUniqueNaturalKeyMap(previous);
+  const currentByNaturalKey = buildUniqueNaturalKeyMap(current);
 
-  const newPostings = current.filter((posting) => !previousById.has(posting.id));
+  const newPostings = current.filter(
+    (posting) => !findPreviousPosting(posting, previousById, previousByNaturalKey, currentByNaturalKey),
+  );
 
   const changedPostings = current
-    .filter((posting) => previousById.has(posting.id))
-    .map((posting) => ({ before: previousById.get(posting.id)!, after: posting }))
-    .filter(({ before, after }) => before.contentHash !== after.contentHash);
+    .map((posting) => ({
+      before: findPreviousPosting(posting, previousById, previousByNaturalKey, currentByNaturalKey),
+      after: posting,
+    }))
+    .filter((match): match is { before: JobPosting; after: JobPosting } => match.before !== undefined)
+    .filter(({ before, after }) => hasPostingChanged(before, after));
 
   const closingSoonPostings = current.filter((posting) => {
     if (!posting.endDate) return false;
@@ -37,7 +45,9 @@ export function diffPostings(
     return remainingDays >= 0 && remainingDays <= closingSoonDays;
   });
 
-  const removedPostings = previous.filter((posting) => !currentById.has(posting.id));
+  const removedPostings = previous.filter(
+    (posting) => !findCurrentPosting(posting, currentById, previousByNaturalKey, currentByNaturalKey),
+  );
 
   return {
     newPostings,
@@ -45,4 +55,34 @@ export function diffPostings(
     closingSoonPostings,
     removedPostings,
   };
+}
+
+function findPreviousPosting(
+  posting: JobPosting,
+  previousById: Map<string, JobPosting>,
+  previousByNaturalKey: Map<string, JobPosting>,
+  currentByNaturalKey: Map<string, JobPosting>,
+): JobPosting | undefined {
+  return previousById.get(posting.id) ?? findNaturalKeyMatch(posting, previousByNaturalKey, currentByNaturalKey);
+}
+
+function findCurrentPosting(
+  posting: JobPosting,
+  currentById: Map<string, JobPosting>,
+  previousByNaturalKey: Map<string, JobPosting>,
+  currentByNaturalKey: Map<string, JobPosting>,
+): JobPosting | undefined {
+  return currentById.get(posting.id) ?? findNaturalKeyMatch(posting, currentByNaturalKey, previousByNaturalKey);
+}
+
+function hasPostingChanged(before: JobPosting, after: JobPosting): boolean {
+  return (
+    before.source !== after.source ||
+    before.company !== after.company ||
+    before.careerType !== after.careerType ||
+    before.title !== after.title ||
+    before.startDate !== after.startDate ||
+    before.endDate !== after.endDate ||
+    before.url !== after.url
+  );
 }

@@ -2,6 +2,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { JobPosting, Snapshot, SourceStatus } from "./model.js";
+import { buildUniqueNaturalKeyMap, findNaturalKeyMatch } from "./posting-key.js";
 
 export async function readSnapshot(path = "data/snapshot.json"): Promise<Snapshot | null> {
   try {
@@ -14,9 +15,12 @@ export async function readSnapshot(path = "data/snapshot.json"): Promise<Snapsho
 
 export function preserveFirstSeen(previous: JobPosting[], current: JobPosting[]): JobPosting[] {
   const previousById = new Map(previous.map((posting) => [posting.id, posting]));
+  const previousByNaturalKey = buildUniqueNaturalKeyMap(previous);
+  const currentByNaturalKey = buildUniqueNaturalKeyMap(current);
 
   return current.map((posting) => {
-    const previousPosting = previousById.get(posting.id);
+    const previousPosting =
+      previousById.get(posting.id) ?? findNaturalKeyMatch(posting, previousByNaturalKey, currentByNaturalKey);
     return {
       ...posting,
       firstSeenAt: previousPosting?.firstSeenAt ?? posting.firstSeenAt,

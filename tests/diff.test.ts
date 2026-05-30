@@ -43,6 +43,33 @@ describe("diffPostings", () => {
     expect(result.removedPostings).toEqual([]);
   });
 
+  it("matches unique postings when generated ids change", () => {
+    const before = job({ id: "legacy-id", contentHash: "legacy-hash", title: "Same Posting" });
+    const after = job({ id: "stable-id", contentHash: "stable-hash", title: "Same Posting" });
+
+    const result = diffPostings([before], [after], "2026-05-30");
+
+    expect(result.newPostings).toEqual([]);
+    expect(result.changedPostings).toEqual([]);
+    expect(result.removedPostings).toEqual([]);
+  });
+
+  it("detects date changes when generated ids change", () => {
+    const before = job({ id: "legacy-id", contentHash: "legacy-hash", title: "Same Posting" });
+    const after = job({
+      id: "stable-id",
+      contentHash: "stable-hash",
+      title: "Same Posting",
+      endDate: "2026-06-07",
+    });
+
+    const result = diffPostings([before], [after], "2026-05-30");
+
+    expect(result.newPostings).toEqual([]);
+    expect(result.changedPostings).toEqual([{ before, after }]);
+    expect(result.removedPostings).toEqual([]);
+  });
+
   it("detects closing-soon postings within seven days", () => {
     const posting = job({ endDate: "2026-06-06" });
     const result = diffPostings([posting], [posting], "2026-05-30");

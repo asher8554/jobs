@@ -18,3 +18,4 @@
 - User approved the design document and asked to continue.
 - Implementation plan uses TypeScript, Vitest, Playwright Chromium, GitHub Actions, and generated static HTML.
 - Source-specific scrapers will start as thin wrappers over a generic Playwright career-page parser, with config-driven company and keyword filtering.
+- On UNC/NAS workspaces, use `powershell -ExecutionPolicy Bypass -File scripts/run-npm.ps1 run build` and `powershell -ExecutionPolicy Bypass -File scripts/run-npm.ps1 test` so `cmd` maps the repo path before invoking npm/Vitest.

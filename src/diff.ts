@@ -2,14 +2,27 @@
 import { daysUntil } from "./date.js";
 import type { DiffResult, JobPosting } from "./model.js";
 
+function buildPostingMap(postings: JobPosting[]): Map<string, JobPosting> {
+  const postingsById = new Map<string, JobPosting>();
+
+  for (const posting of postings) {
+    if (postingsById.has(posting.id)) {
+      throw new Error(`Duplicate job id: ${posting.id}`);
+    }
+    postingsById.set(posting.id, posting);
+  }
+
+  return postingsById;
+}
+
 export function diffPostings(
   previous: JobPosting[],
   current: JobPosting[],
   today: string,
   closingSoonDays = 7,
 ): DiffResult {
-  const previousById = new Map(previous.map((posting) => [posting.id, posting]));
-  const currentById = new Map(current.map((posting) => [posting.id, posting]));
+  const previousById = buildPostingMap(previous);
+  const currentById = buildPostingMap(current);
 
   const newPostings = current.filter((posting) => !previousById.has(posting.id));
 

@@ -20,9 +20,18 @@ export async function scrapeAllSites(sites: SiteConfig[], checkedAt: string): Pr
 
   try {
     for (const site of sites) {
-      const result = await scrapeOneSite(browser, site, checkedAt);
-      postings.push(...result.postings);
-      sources.push(result.status);
+      try {
+        const result = await scrapeOneSite(browser, site, checkedAt);
+        postings.push(...result.postings);
+        sources.push(result.status);
+      } catch (error) {
+        sources.push({
+          source: site.source,
+          ok: false,
+          checkedAt,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   } finally {
     await browser.close();

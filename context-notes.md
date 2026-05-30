@@ -15,3 +15,6 @@
 - Approved schedule is daily at 09:00 KST.
 - Closing-soon threshold is 7 days.
 - One site failing should not block other sites.
+- User approved the design document and asked to continue.
+- Implementation plan uses TypeScript, Vitest, Playwright Chromium, GitHub Actions, and generated static HTML.
+- Source-specific scrapers will start as thin wrappers over a generic Playwright career-page parser, with config-driven company and keyword filtering.

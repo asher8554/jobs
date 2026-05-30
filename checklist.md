@@ -8,9 +8,8 @@
 - [x] Approve data model and screen structure.
 - [x] Approve schedule and failure policy.
 - [x] Write design document.
-- [ ] Review design document.
-- [ ] Write implementation plan.
+- [x] Review design document.
+- [x] Write implementation plan.
 - [ ] Implement scraper and dashboard.
 - [ ] Run tests and build.
 - [ ] Commit implementation.
-

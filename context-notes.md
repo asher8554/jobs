@@ -46,3 +46,9 @@
 - Additional live tracing showed Hyundai posting cards use `javascript:void(0)` anchors and render after the initial navigation/filter elements. The generic collector needs a page-URL fallback plus bounded delayed-row handling for default-company sites.
 - Final validation completed: scoped scraper test exited 0 with 16 tests passed; full suite exited 0 with 9 files and 70 tests passed; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=8 sources=5 failed=0`.
 - Live snapshot source counts were Samsung 0, Hyundai 8, Kia 0, Mobis 0, and LG 0. Hyundai included `제조경쟁력 강화 전략 수립` with end date `2026-05-31`.
+
+## 2026-05-30 Initial Snapshot
+
+- Final local verification passed with 9 test files and 70 tests, then `tsc --noEmit`, then live update.
+- Initial live update generated `data/snapshot.json`, `data/history/2026-05-30.json`, `public/index.html`, and `public/.nojekyll`.
+- Initial generated dashboard contains 8 active Hyundai Motor Company career postings and 0 failed sources.

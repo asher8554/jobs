@@ -10,9 +10,9 @@
 - [x] Write design document.
 - [x] Review design document.
 - [x] Write implementation plan.
-- [ ] Implement scraper and dashboard.
+- [x] Implement scraper and dashboard.
 - [x] Run tests and build.
-- [ ] Commit implementation.
+- [x] Commit implementation.
 
 ## Task 12 Live Update Blocker
 

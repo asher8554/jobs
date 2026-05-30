@@ -41,6 +41,22 @@ describe("parseCandidateBlocks", () => {
     expect(result[0].contentHash).toHaveLength(16);
   });
 
+  it("rejects ambiguous default-company aggregate blocks", () => {
+    const result = parseCandidateBlocks(kiaConfig, [{
+      text: [
+        "경력",
+        "플랫폼 개발자",
+        "2026.05.30 ~ 2026.06.06",
+        "경력",
+        "데이터 엔지니어",
+        "2026.05.31 ~ 2026.06.07",
+      ].join("\n"),
+      url: "https://career.kia.com/apply/applyList.kc",
+    }], "2026-05-30T00:00:00.000Z");
+
+    expect(result).toEqual([]);
+  });
+
   it("requires target company when default company is absent", () => {
     const result = parseCandidateBlocks(lgConfig, [{
       text: "LG에너지솔루션\n경력\n배터리 품질 엔지니어\n2026.05.30 ~ 2026.06.03",

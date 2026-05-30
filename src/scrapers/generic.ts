@@ -16,6 +16,7 @@ export type ScrapeOutput = {
 };
 
 const DATE_LINE_PATTERN = /20\d{2}[.\-/\s]+\d{1,2}[.\-/\s]+\d{1,2}/;
+const DATE_RANGE_PATTERN = /20\d{2}[.\-/년\s]+\d{1,2}[.\-/월\s]+\d{1,2}\s*[-~〜–—]\s*20\d{2}[.\-/년\s]+\d{1,2}[.\-/월\s]+\d{1,2}/g;
 const LOAD_MORE_TEXT_PATTERN = /더보기|더 보기|More|MORE|Load more|전체보기|결과 더 보기/i;
 const CAREER_LABEL_PATTERN = /^\s*(?:[\[【(]\s*)?경력(?:직)?(?:\s*[\]】)])?(?=$|[\s:：\-|])/;
 
@@ -124,7 +125,10 @@ function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: stri
   if (companies.length !== 1) return null;
 
   const company = companies[0];
-  const title = extractTitle(site, block.text, company);
+  const titleCandidates = extractTitleCandidates(site, block.text, company);
+  if (isAmbiguousDefaultCompanyBlock(site, block.text, titleCandidates)) return null;
+
+  const title = selectTitleCandidate(titleCandidates);
   if (!title) return null;
 
   const { startDate, endDate } = extractDateRange(block.text);
@@ -162,9 +166,9 @@ function detectCompanies(site: SiteConfig, text: string): CompanyName[] {
   return matches;
 }
 
-function extractTitle(site: SiteConfig, text: string, company: CompanyName): string | null {
+function extractTitleCandidates(site: SiteConfig, text: string, company: CompanyName): string[] {
   const companyMarkers = buildCompanyMarkers(site, company);
-  const lines = text
+  return text
     .split(/\n+/)
     .map((line) => line.trim().replace(/\s+/g, " "))
     .map(stripCareerLabel)
@@ -173,8 +177,17 @@ function extractTitle(site: SiteConfig, text: string, company: CompanyName): str
     .filter((line) => !DATE_LINE_PATTERN.test(line))
     .filter((line) => !companyMarkers.some((marker) => line.includes(marker)))
     .filter((line) => line.length >= 4 && line.length <= 120);
+}
 
-  return lines.sort((a, b) => b.length - a.length)[0] ?? null;
+function selectTitleCandidate(titleCandidates: string[]): string | null {
+  return titleCandidates.sort((a, b) => b.length - a.length)[0] ?? null;
+}
+
+function isAmbiguousDefaultCompanyBlock(site: SiteConfig, text: string, titleCandidates: string[]): boolean {
+  if (!site.defaultCompany) return false;
+
+  const dateRangeCount = [...text.matchAll(DATE_RANGE_PATTERN)].length;
+  return dateRangeCount > 1 || new Set(titleCandidates).size > 1;
 }
 
 function buildCompanyMarkers(site: SiteConfig, company: CompanyName): string[] {
@@ -265,6 +278,10 @@ async function collectCandidateBlocks(page: Page): Promise<CandidateBlock[]> {
         .filter((url): url is string => url !== null);
     }
 
+    function hasAnchorHrefIn(element: HTMLElement): boolean {
+      return element.matches("a[href]") || element.querySelector("a[href]") !== null;
+    }
+
     function hasMultiplePostingChildren(element: HTMLElement): boolean {
       if (element.matches("a[href]")) return false;
 
@@ -296,7 +313,7 @@ async function collectCandidateBlocks(page: Page): Promise<CandidateBlock[]> {
       if (text.length < 12 || text.length > 1200) continue;
 
       const anchorUrls = validAnchorUrlsIn(element);
-      const url = anchorUrls[0] ?? (element.matches("a[href]") ? null : resolveHttpUrl(location.href, location.href));
+      const url = anchorUrls[0] ?? (hasAnchorHrefIn(element) ? null : resolveHttpUrl(location.href, location.href));
       if (!url) continue;
 
       const key = `${text}|${url}`;

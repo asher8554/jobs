@@ -61,4 +61,51 @@ describe("parseCandidateBlocks", () => {
 
     expect(result).toEqual([]);
   });
+
+  it("strips bracketed career labels from titles", () => {
+    const result = parseCandidateBlocks(kiaConfig, [{
+      text: "[경력] 플랫폼 개발자\n접수기간 2026.05.30 ~ 2026.06.06",
+      url: "https://career.kia.com/job/3",
+    }], "2026-05-30T00:00:00.000Z");
+
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("플랫폼 개발자");
+  });
+
+  it("strips inline career labels from titles", () => {
+    const result = parseCandidateBlocks(kiaConfig, [{
+      text: "경력직 플랫폼 개발자\n접수기간 2026.05.30 ~ 2026.06.06",
+      url: "https://career.kia.com/job/4",
+    }], "2026-05-30T00:00:00.000Z");
+
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("플랫폼 개발자");
+  });
+
+  it("rejects ambiguous aggregate blocks with multiple company postings", () => {
+    const result = parseCandidateBlocks(lgConfig, [{
+      text: [
+        "LG전자",
+        "경력",
+        "플랫폼 개발자",
+        "2026.05.30 ~ 2026.06.06",
+        "LG에너지솔루션",
+        "경력",
+        "배터리 품질 엔지니어",
+        "2026.05.31 ~ 2026.06.07",
+      ].join("\n"),
+      url: "https://careers.lg.com/apply",
+    }], "2026-05-30T00:00:00.000Z");
+
+    expect(result).toEqual([]);
+  });
+
+  it("rejects non-http posting urls", () => {
+    const result = parseCandidateBlocks(kiaConfig, [{
+      text: "경력\n플랫폼 개발자\n접수기간 2026.05.30 ~ 2026.06.06",
+      url: "javascript:void(0)",
+    }], "2026-05-30T00:00:00.000Z");
+
+    expect(result).toEqual([]);
+  });
 });

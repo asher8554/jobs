@@ -17,6 +17,7 @@ export type ScrapeOutput = {
 
 const DATE_LINE_PATTERN = /20\d{2}[.\-/\s]+\d{1,2}[.\-/\s]+\d{1,2}/;
 const LOAD_MORE_TEXT_PATTERN = /더보기|더 보기|More|MORE|Load more|전체보기|결과 더 보기/i;
+const CAREER_LABEL_PATTERN = /^\s*(?:[\[【(]\s*)?경력(?:직)?(?:\s*[\]】)])?(?=$|[\s:：\-|])/;
 
 export function parseCandidateBlocks(
   site: SiteConfig,
@@ -52,11 +53,36 @@ export async function scrapeGenericCareerPage(
       locale: "ko-KR",
       timezoneId: "Asia/Seoul",
     });
-    await page.goto(site.url, { waitUntil: "networkidle", timeout: 60_000 });
+    await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector("body", { timeout: 10_000 });
+    await page.waitForSelector(getCandidateSelector(), { timeout: 5_000 }).catch(() => undefined);
     await clickLoadMore(page);
 
     const blocks = await collectCandidateBlocks(page);
+    if (blocks.length === 0) {
+      return {
+        postings: [],
+        status: {
+          source: site.source,
+          ok: false,
+          checkedAt,
+          message: "No candidate posting blocks found.",
+        },
+      };
+    }
+
     const postings = parseCandidateBlocks(site, blocks, checkedAt);
+    if (postings.length === 0) {
+      return {
+        postings: [],
+        status: {
+          source: site.source,
+          ok: false,
+          checkedAt,
+          message: `No postings parsed from ${blocks.length} candidate blocks.`,
+        },
+      };
+    }
 
     return {
       postings,
@@ -91,14 +117,17 @@ function hasExcludedKeyword(text: string, excludedKeywords: string[]): boolean {
 }
 
 function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: string): JobPosting | null {
-  const company = detectCompany(site, block.text);
-  if (!company) return null;
+  const url = normalizeHttpUrl(block.url);
+  if (!url) return null;
 
+  const companies = detectCompanies(site, block.text);
+  if (companies.length !== 1) return null;
+
+  const company = companies[0];
   const title = extractTitle(site, block.text, company);
   if (!title) return null;
 
   const { startDate, endDate } = extractDateRange(block.text);
-  const url = block.url || site.url;
   const posting: JobPosting = {
     id: buildPostingId(site.source, company, title, url),
     company,
@@ -119,17 +148,18 @@ function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: stri
   };
 }
 
-function detectCompany(site: SiteConfig, text: string): CompanyName | null {
-  if (site.defaultCompany) return site.defaultCompany;
+function detectCompanies(site: SiteConfig, text: string): CompanyName[] {
+  if (site.defaultCompany) return [site.defaultCompany];
 
+  const matches: CompanyName[] = [];
   for (const company of site.companies) {
     const names = [company.name, ...company.aliases];
     if (names.some((name) => name !== "" && text.includes(name))) {
-      return company.name;
+      matches.push(company.name);
     }
   }
 
-  return null;
+  return matches;
 }
 
 function extractTitle(site: SiteConfig, text: string, company: CompanyName): string | null {
@@ -137,8 +167,9 @@ function extractTitle(site: SiteConfig, text: string, company: CompanyName): str
   const lines = text
     .split(/\n+/)
     .map((line) => line.trim().replace(/\s+/g, " "))
+    .map(stripCareerLabel)
     .filter(Boolean)
-    .filter((line) => !site.requiredKeywords.some((keyword) => keyword !== "" && line.includes(keyword)))
+    .filter((line) => !site.requiredKeywords.some((keyword) => keyword !== "" && line === keyword))
     .filter((line) => !DATE_LINE_PATTERN.test(line))
     .filter((line) => !companyMarkers.some((marker) => line.includes(marker)))
     .filter((line) => line.length >= 4 && line.length <= 120);
@@ -152,6 +183,20 @@ function buildCompanyMarkers(site: SiteConfig, company: CompanyName): string[] {
   return [company, ...(matchingRule?.aliases ?? []), ...companyTokens].filter((marker) => marker !== "");
 }
 
+function stripCareerLabel(line: string): string {
+  return line.replace(CAREER_LABEL_PATTERN, "").replace(/^[\s:：\-|]+/, "").trim();
+}
+
+function normalizeHttpUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 async function clickLoadMore(page: Page): Promise<void> {
   for (let i = 0; i < 5; i += 1) {
     const loadMore = page.getByText(LOAD_MORE_TEXT_PATTERN).first();
@@ -160,6 +205,19 @@ async function clickLoadMore(page: Page): Promise<void> {
     await loadMore.click({ timeout: 3_000 }).catch(() => undefined);
     await page.waitForTimeout(1_000);
   }
+}
+
+function getCandidateSelector(): string {
+  return [
+    "a[href]",
+    "li",
+    "article",
+    "tr",
+    "[role='listitem']",
+    "[class*='card']",
+    "[class*='item']",
+    "[class*='job']",
+  ].join(",");
 }
 
 async function collectCandidateBlocks(page: Page): Promise<CandidateBlock[]> {
@@ -173,24 +231,74 @@ async function collectCandidateBlocks(page: Page): Promise<CandidateBlock[]> {
       "[class*='card']",
       "[class*='item']",
       "[class*='job']",
-      "[class*='list']",
     ].join(",");
     const elements = Array.from(document.querySelectorAll<HTMLElement>(selectors));
     const seen = new Set<string>();
     const blocks: CandidateBlock[] = [];
 
-    for (const element of elements) {
-      const text = (element.innerText ?? "")
+    function normalizeText(element: HTMLElement): string {
+      return (element.innerText ?? "")
         .trim()
         .replace(/\r\n/g, "\n")
         .replace(/\n{3,}/g, "\n\n");
+    }
+
+    function resolveHttpUrl(value: string, base: string): string | null {
+      const href = value.trim();
+      if (href === "" || href.startsWith("#")) return null;
+
+      try {
+        const url = new URL(href, base);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+        return url.toString();
+      } catch {
+        return null;
+      }
+    }
+
+    function validAnchorUrlsIn(element: HTMLElement): string[] {
+      const anchors = element.matches("a[href]")
+        ? [element as HTMLAnchorElement]
+        : Array.from(element.querySelectorAll<HTMLAnchorElement>("a[href]"));
+      return anchors
+        .map((anchor) => resolveHttpUrl(anchor.getAttribute("href") ?? "", location.href))
+        .filter((url): url is string => url !== null);
+    }
+
+    function hasMultiplePostingChildren(element: HTMLElement): boolean {
+      if (element.matches("a[href]")) return false;
+
+      const anchorUrls = new Set(validAnchorUrlsIn(element));
+      if (anchorUrls.size > 1) return true;
+
+      const containerSelectors = [
+        "li",
+        "article",
+        "tr",
+        "[role='listitem']",
+        "[class*='card']",
+        "[class*='item']",
+        "[class*='job']",
+      ].join(",");
+      const children = Array.from(element.querySelectorAll<HTMLElement>(containerSelectors)).filter((child) => {
+        if (child === element || !element.contains(child)) return false;
+        const text = normalizeText(child);
+        return text.length >= 12 && text.length <= 1200;
+      });
+
+      return children.length > 1;
+    }
+
+    for (const element of elements) {
+      if (hasMultiplePostingChildren(element)) continue;
+
+      const text = normalizeText(element);
       if (text.length < 12 || text.length > 1200) continue;
 
-      const anchor = element.matches("a[href]")
-        ? (element as HTMLAnchorElement)
-        : element.querySelector<HTMLAnchorElement>("a[href]");
-      const href = anchor?.getAttribute("href") ?? location.href;
-      const url = new URL(href, location.href).toString();
+      const anchorUrls = validAnchorUrlsIn(element);
+      const url = anchorUrls[0] ?? (element.matches("a[href]") ? null : resolveHttpUrl(location.href, location.href));
+      if (!url) continue;
+
       const key = `${text}|${url}`;
       if (seen.has(key)) continue;
 

@@ -35,9 +35,15 @@ export async function writeHistory(snapshot: Snapshot, dateStamp: string): Promi
 export function buildSnapshot(checkedAt: string, postings: JobPosting[], sources: SourceStatus[]): Snapshot {
   return {
     checkedAt,
-    postings: postings.sort((a, b) =>
-      `${a.company}${a.endDate ?? ""}${a.title}`.localeCompare(`${b.company}${b.endDate ?? ""}${b.title}`),
-    ),
+    postings: [...postings].sort((a, b) => {
+      const companyOrder = a.company.localeCompare(b.company);
+      if (companyOrder !== 0) return companyOrder;
+
+      const endDateOrder = (a.endDate ?? "").localeCompare(b.endDate ?? "");
+      if (endDateOrder !== 0) return endDateOrder;
+
+      return a.title.localeCompare(b.title);
+    }),
     sources,
   };
 }

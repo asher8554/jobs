@@ -109,6 +109,30 @@ describe("snapshot storage", () => {
     });
   });
 
+  it("does not mutate the original postings order when building snapshots", () => {
+    const postings = [
+      job({ id: "c", company: "Kia", endDate: "2026-06-07", title: "C" }),
+      job({ id: "a", company: "Hyundai Motor Company", endDate: "2026-06-01", title: "A", source: "hyundai" }),
+      job({ id: "b", company: "Kia", endDate: "2026-06-01", title: "B" }),
+    ];
+
+    buildSnapshot("2026-05-30T00:00:00.000Z", postings, [sourceStatus]);
+
+    expect(postings.map((posting) => posting.id)).toEqual(["c", "a", "b"]);
+  });
+
+  it("sorts null end dates before dated end dates within the same company, then by title", () => {
+    const postings = [
+      job({ id: "dated", company: "Kia", endDate: "2026-06-01", title: "A" }),
+      job({ id: "null-b", company: "Kia", endDate: null, title: "B" }),
+      job({ id: "null-a", company: "Kia", endDate: null, title: "A" }),
+    ];
+
+    const result = buildSnapshot("2026-05-30T00:00:00.000Z", postings, [sourceStatus]);
+
+    expect(result.postings.map((posting) => posting.id)).toEqual(["null-a", "null-b", "dated"]);
+  });
+
   it("throws non-missing read errors", async () => {
     const dir = await mkdtemp(join(tmpdir(), "jobs-storage-"));
     const path = join(dir, "bad.json");

@@ -11,5 +11,5 @@
 - [x] Review design document.
 - [x] Write implementation plan.
 - [ ] Implement scraper and dashboard.
-- [ ] Run tests and build.
+- [x] Run tests and build.
 - [ ] Commit implementation.

@@ -1,0 +1,17 @@
+# Context Notes
+
+## 2026-05-30
+
+- User wants a GitHub Pages dashboard for noticing changes in career postings.
+- Repository is `https://github.com/asher8554/jobs`.
+- Repository was empty when checked.
+- Local working folder is a NAS path, not a Git repository.
+- Target posting type is career postings only.
+- Keyword filtering is out of scope for now.
+- Dashboard should highlight new, changed, and closing-soon postings.
+- Samsung scope is Samsung Electronics DX and Samsung Electronics DS.
+- LG scope is LG Electronics and LG Energy Solution.
+- Approved approach is GitHub Actions plus static HTML plus JSON snapshots.
+- Approved schedule is daily at 09:00 KST.
+- Closing-soon threshold is 7 days.
+- One site failing should not block other sites.

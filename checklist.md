@@ -13,3 +13,11 @@
 - [ ] Implement scraper and dashboard.
 - [x] Run tests and build.
 - [ ] Commit implementation.
+
+## Task 12 Live Update Blocker
+
+- [x] Add Playwright regression for `scrapeGenericCareerPage` under `tsx`.
+- [x] Move candidate block collection to a raw browser JavaScript expression.
+- [x] Remove failed-run generated `public/` output.
+- [x] Run scoped test, full test, build, and live update.
+- [x] Commit blocker fix.

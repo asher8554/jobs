@@ -1,6 +1,7 @@
 // 채용 사이트에서 추출한 텍스트 블록을 공통 공고 모델로 바꾸는 규칙을 검증한다.
 import { describe, expect, it } from "vitest";
-import { parseCandidateBlocks } from "../src/scrapers/generic.js";
+import { chromium } from "playwright";
+import { parseCandidateBlocks, scrapeGenericCareerPage } from "../src/scrapers/generic.js";
 import type { SiteConfig } from "../src/config.js";
 
 const kiaConfig: SiteConfig = {
@@ -23,6 +24,54 @@ const lgConfig: SiteConfig = {
   requiredKeywords: ["경력"],
   excludedKeywords: ["로그인"],
 };
+
+describe("scrapeGenericCareerPage", () => {
+  it("scrapes a data URL posting without transformed evaluate helper failures", async () => {
+    const browser = await chromium.launch();
+    const postingUrl = "https://career.kia.com/job/tsx-regression";
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <main>
+            <ul>
+              <li>
+                <a href="${postingUrl}">Career<br>Backend Engineer<br>2026.05.30 ~ 2026.06.06</a>
+              </li>
+            </ul>
+          </main>
+        </body>
+      </html>
+    `;
+
+    try {
+      const result = await scrapeGenericCareerPage(
+        browser,
+        {
+          ...kiaConfig,
+          url: `data:text/html;charset=utf-8,${encodeURIComponent(html)}`,
+          requiredKeywords: ["Career"],
+          excludedKeywords: [],
+        },
+        "2026-05-30T00:00:00.000Z",
+      );
+
+      expect(result.status).toMatchObject({
+        source: "kia",
+        ok: true,
+        postingCount: 1,
+      });
+      expect(result.postings).toHaveLength(1);
+      expect(result.postings[0]).toMatchObject({
+        company: "Kia",
+        title: "Backend Engineer",
+        url: postingUrl,
+      });
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+});
 
 describe("parseCandidateBlocks", () => {
   it("parses implicit-company career postings", () => {

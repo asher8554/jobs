@@ -234,10 +234,62 @@ function getCandidateSelector(): string {
   ].join(",");
 }
 
-async function collectCandidateBlocks(page: Page): Promise<CandidateBlock[]> {
-  return page.evaluate(() => {
-    const selectors = [
-      "a[href]",
+const COLLECT_CANDIDATE_BLOCKS_SCRIPT = String.raw`
+(function () {
+  const selectors = [
+    "a[href]",
+    "li",
+    "article",
+    "tr",
+    "[role='listitem']",
+    "[class*='card']",
+    "[class*='item']",
+    "[class*='job']",
+  ].join(",");
+  const elements = Array.from(document.querySelectorAll(selectors));
+  const seen = new Set();
+  const blocks = [];
+
+  function normalizeText(element) {
+    return (element.innerText || "")
+      .trim()
+      .replace(/\r\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n");
+  }
+
+  function resolveHttpUrl(value, base) {
+    const href = value.trim();
+    if (href === "" || href.startsWith("#")) return null;
+
+    try {
+      const url = new URL(href, base);
+      if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+      return url.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  function validAnchorUrlsIn(element) {
+    const anchors = element.matches("a[href]")
+      ? [element]
+      : Array.from(element.querySelectorAll("a[href]"));
+    return anchors
+      .map((anchor) => resolveHttpUrl(anchor.getAttribute("href") || "", location.href))
+      .filter((url) => url !== null);
+  }
+
+  function hasAnchorHrefIn(element) {
+    return element.matches("a[href]") || element.querySelector("a[href]") !== null;
+  }
+
+  function hasMultiplePostingChildren(element) {
+    if (element.matches("a[href]")) return false;
+
+    const anchorUrls = new Set(validAnchorUrlsIn(element));
+    if (anchorUrls.size > 1) return true;
+
+    const containerSelectors = [
       "li",
       "article",
       "tr",
@@ -246,84 +298,37 @@ async function collectCandidateBlocks(page: Page): Promise<CandidateBlock[]> {
       "[class*='item']",
       "[class*='job']",
     ].join(",");
-    const elements = Array.from(document.querySelectorAll<HTMLElement>(selectors));
-    const seen = new Set<string>();
-    const blocks: CandidateBlock[] = [];
+    const children = Array.from(element.querySelectorAll(containerSelectors)).filter((child) => {
+      if (child === element || !element.contains(child)) return false;
+      const text = normalizeText(child);
+      return text.length >= 12 && text.length <= 1200;
+    });
 
-    function normalizeText(element: HTMLElement): string {
-      return (element.innerText ?? "")
-        .trim()
-        .replace(/\r\n/g, "\n")
-        .replace(/\n{3,}/g, "\n\n");
-    }
+    return children.length > 1;
+  }
 
-    function resolveHttpUrl(value: string, base: string): string | null {
-      const href = value.trim();
-      if (href === "" || href.startsWith("#")) return null;
+  for (const element of elements) {
+    if (hasMultiplePostingChildren(element)) continue;
 
-      try {
-        const url = new URL(href, base);
-        if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-        return url.toString();
-      } catch {
-        return null;
-      }
-    }
+    const text = normalizeText(element);
+    if (text.length < 12 || text.length > 1200) continue;
 
-    function validAnchorUrlsIn(element: HTMLElement): string[] {
-      const anchors = element.matches("a[href]")
-        ? [element as HTMLAnchorElement]
-        : Array.from(element.querySelectorAll<HTMLAnchorElement>("a[href]"));
-      return anchors
-        .map((anchor) => resolveHttpUrl(anchor.getAttribute("href") ?? "", location.href))
-        .filter((url): url is string => url !== null);
-    }
+    const anchorUrls = validAnchorUrlsIn(element);
+    const url = anchorUrls[0] || (hasAnchorHrefIn(element) ? null : resolveHttpUrl(location.href, location.href));
+    if (!url) continue;
 
-    function hasAnchorHrefIn(element: HTMLElement): boolean {
-      return element.matches("a[href]") || element.querySelector("a[href]") !== null;
-    }
+    const key = text + "|" + url;
+    if (seen.has(key)) continue;
 
-    function hasMultiplePostingChildren(element: HTMLElement): boolean {
-      if (element.matches("a[href]")) return false;
+    seen.add(key);
+    blocks.push({ text, url });
+  }
 
-      const anchorUrls = new Set(validAnchorUrlsIn(element));
-      if (anchorUrls.size > 1) return true;
+  return blocks;
+}())
+`;
 
-      const containerSelectors = [
-        "li",
-        "article",
-        "tr",
-        "[role='listitem']",
-        "[class*='card']",
-        "[class*='item']",
-        "[class*='job']",
-      ].join(",");
-      const children = Array.from(element.querySelectorAll<HTMLElement>(containerSelectors)).filter((child) => {
-        if (child === element || !element.contains(child)) return false;
-        const text = normalizeText(child);
-        return text.length >= 12 && text.length <= 1200;
-      });
-
-      return children.length > 1;
-    }
-
-    for (const element of elements) {
-      if (hasMultiplePostingChildren(element)) continue;
-
-      const text = normalizeText(element);
-      if (text.length < 12 || text.length > 1200) continue;
-
-      const anchorUrls = validAnchorUrlsIn(element);
-      const url = anchorUrls[0] ?? (hasAnchorHrefIn(element) ? null : resolveHttpUrl(location.href, location.href));
-      if (!url) continue;
-
-      const key = `${text}|${url}`;
-      if (seen.has(key)) continue;
-
-      seen.add(key);
-      blocks.push({ text, url });
-    }
-
-    return blocks;
-  });
+async function collectCandidateBlocks(page: Page): Promise<CandidateBlock[]> {
+  const blocks = await page.evaluate(COLLECT_CANDIDATE_BLOCKS_SCRIPT);
+  return blocks as CandidateBlock[];
 }

@@ -15,12 +15,13 @@ export async function main(): Promise<void> {
   const previous = await readSnapshot();
   const sites = await loadSiteConfigs();
   const scraped = await scrapeAllSites(sites, checkedAt);
-  const anySuccess = scraped.sources.some((source) => source.ok);
+  const sources = protectUnexpectedEmptySources(previous, scraped.postings, scraped.sources);
+  const anySuccess = sources.some((source) => source.ok);
 
   const currentPostings = anySuccess
-    ? mergeScrapedPostings(previous?.postings ?? [], scraped.postings, scraped.sources)
+    ? mergeScrapedPostings(previous?.postings ?? [], scraped.postings, sources)
     : previous?.postings ?? [];
-  const snapshot = buildSnapshot(checkedAt, currentPostings, scraped.sources);
+  const snapshot = buildSnapshot(checkedAt, currentPostings, sources);
   const diff = diffPostings(previous?.postings ?? [], snapshot.postings, today);
   const sourceLinks = sites.map(({ source, url }) => ({ source, url }));
 
@@ -33,7 +34,7 @@ export async function main(): Promise<void> {
     await writeHistory(snapshot, today);
   }
 
-  printSummary(snapshot.postings.length, scraped.sources.length, scraped.sources.filter((source) => !source.ok).length);
+  printSummary(snapshot.postings.length, sources.length, sources.filter((source) => !source.ok).length);
 }
 
 export function printSummary(postingCount: number, sourceCount: number, failedCount: number): void {
@@ -61,4 +62,41 @@ function mergeScrapedPostings(
   const carriedPostings = previous.filter((posting) => failedSources.has(posting.source) && !scrapedIds.has(posting.id));
 
   return preserveFirstSeen(previous, [...scrapedPostings, ...carriedPostings]);
+}
+
+function protectUnexpectedEmptySources(
+  previous: { postings: JobPosting[] } | null,
+  scrapedPostings: JobPosting[],
+  sources: SourceStatus[],
+): SourceStatus[] {
+  if (previous === null) return sources;
+
+  const previousPostingCounts = countPostingsBySource(previous.postings);
+  const scrapedPostingCounts = countPostingsBySource(scrapedPostings);
+
+  return sources.map((source) => {
+    const previousCount = previousPostingCounts.get(source.source) ?? 0;
+    const scrapedCount = scrapedPostingCounts.get(source.source) ?? 0;
+
+    if (!source.ok || source.postingCount !== 0 || previousCount === 0 || scrapedCount > 0) {
+      return source;
+    }
+
+    return {
+      source: source.source,
+      ok: false,
+      checkedAt: source.checkedAt,
+      message: `이전 공고 ${previousCount}건이 있었지만 이번 수집이 0건으로 끝나 이전 결과를 유지함`,
+    };
+  });
+}
+
+function countPostingsBySource(postings: JobPosting[]): Map<JobPosting["source"], number> {
+  const counts = new Map<JobPosting["source"], number>();
+
+  for (const posting of postings) {
+    counts.set(posting.source, (counts.get(posting.source) ?? 0) + 1);
+  }
+
+  return counts;
 }

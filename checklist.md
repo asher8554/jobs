@@ -65,3 +65,10 @@
 - [x] Fix parser gaps found during live recheck.
 - [x] Run tests, build, live update, and rendered QA.
 - [x] Commit source review update.
+
+## GitHub Runner Zero-Result Guard
+
+- [x] Add regression coverage for a previously populated source returning `success: 0`.
+- [x] Treat unexpected `success: 0` as a source failure so previous postings are preserved.
+- [x] Run full tests and build.
+- [x] Regenerate the local live snapshot before push.

@@ -176,4 +176,48 @@ describe("CLI entry point", () => {
       { source: "hyundai", ok: true, checkedAt, postingCount: 1 },
     ]);
   });
+
+  it("treats a populated source returning zero postings as a failed scrape", async () => {
+    const previousHyundaiPosting = posting({
+      id: "hyundai-battery-engineer",
+      company: "Hyundai Motor Company",
+      title: "Battery Engineer",
+      url: "https://example.com/hyundai/jobs/2",
+      source: "hyundai",
+      firstSeenAt: "2026-05-29T00:00:00.000Z",
+      lastSeenAt: "2026-05-29T00:00:00.000Z",
+      contentHash: "hyundai-battery-hash",
+    });
+    const previous: Snapshot = {
+      checkedAt: "2026-05-29T00:00:00.000Z",
+      postings: [previousHyundaiPosting],
+      sources: [{ source: "hyundai", ok: true, checkedAt: "2026-05-29T00:00:00.000Z", postingCount: 1 }],
+    };
+    await mkdir(join(dir, "data"), { recursive: true });
+    await writeFile(join(dir, "data", "snapshot.json"), `${JSON.stringify(previous, null, 2)}\n`, "utf8");
+    vi.mocked(loadSiteConfigs).mockResolvedValue([hyundaiSite, kiaSite]);
+    vi.mocked(scrapeAllSites).mockResolvedValue({
+      postings: [],
+      sources: [
+        { source: "hyundai", ok: true, checkedAt, postingCount: 0 },
+        { source: "kia", ok: true, checkedAt, postingCount: 0 },
+      ],
+    });
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    await main();
+
+    const snapshot = JSON.parse(await readFile(join(dir, "data", "snapshot.json"), "utf8")) as Snapshot;
+    expect(snapshot.postings).toEqual([previousHyundaiPosting]);
+    expect(snapshot.sources).toEqual([
+      {
+        source: "hyundai",
+        ok: false,
+        checkedAt,
+        message: "이전 공고 1건이 있었지만 이번 수집이 0건으로 끝나 이전 결과를 유지함",
+      },
+      { source: "kia", ok: true, checkedAt, postingCount: 0 },
+    ]);
+    expect(log).toHaveBeenCalledWith("postings=1 sources=2 failed=1");
+  });
 });

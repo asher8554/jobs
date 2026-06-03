@@ -93,6 +93,9 @@
 - Pagination is now normalized back to page 1 before scraping and then advances by numeric page buttons before falling back to a next button. This stabilizes Hyundai's multi-page career list.
 - Final validation passed: full test suite exited 0 with 9 files and 86 tests; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=35 sources=5 failed=0`.
 - Rendered Playwright QA over a temporary local HTTP server confirmed 5 source quick links, Hyundai battery postings, dark-mode persistence, no desktop or mobile overflow, and no console warnings/errors.
+- After pushing, GitHub Actions run `26895220314` passed tests, build, update, and deploy, but the hosted runner generated only `postings=5`: Samsung 0, Hyundai 0, Kia 0, Mobis 0, LG 5. The runner treated Hyundai as `success: 0` rather than a scrape failure, so the existing partial-failure preservation did not apply.
+- Added a zero-result guard in the CLI merge path: if a source had previous postings and the current scrape reports `success: 0` with no scraped postings for that source, convert that source status to failure and carry forward the previous postings. Sources that previously had 0 postings, such as Samsung/Mobis in the current snapshot, remain valid 0-result successes.
+- Validation after the guard passed: full test suite exited 0 with 9 files and 87 tests; build exited 0 with `tsc --noEmit`; local live update exited 0 with `postings=35 sources=5 failed=0`. Local source counts were Samsung 0, Hyundai 30, Kia 0, Mobis 0, and LG 5.
 
 ## 2026-06-03 Dark Mode Dashboard
 

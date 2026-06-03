@@ -65,3 +65,13 @@
 - Final validation passed with 9 test files and 78 tests, then `tsc --noEmit`, then live update. Live update reported `postings=13 sources=5 failed=0`: Hyundai 8, LG 5, Samsung/Kia/Mobis 0.
 - After merging to main, Vitest initially picked up the nested `.worktrees/` copy and ran tests twice, so `vitest.config.ts` now excludes `.worktrees/**`. Main validation then passed with 9 test files and 78 tests, followed by `tsc --noEmit`.
 - Schedule changed from 09:00 KST to 09:30 KST by updating GitHub Actions cron from `0 0 * * *` to `30 0 * * *`.
+
+## 2026-06-03 Pagination Scrape Fix
+
+- User noticed the scraper appears to find the career list but does not advance through multiple pages.
+- Current generic scraper only clicks load-more controls before one collection pass, so numbered pagination and next-button pagination can miss later pages.
+- Fix scope is limited to `src/scrapers/generic.ts` plus regression coverage in `tests/scraper-generic.test.ts`.
+- Added a Playwright regression with a two-page Kia-style list. It failed before the scraper changed because only the first page posting was returned.
+- The generic scraper now repeats the existing load-more, signal wait, collection, and parsing sequence per page, then clicks a usable next-page control until no next page is reachable or the 50-page guard is hit.
+- Validation passed after rebasing onto latest `origin/main`: full test suite exited 0 with 9 files and 79 tests; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=6 sources=5 failed=0`.
+- Live update source counts on 2026-06-03 were Samsung 0, Hyundai 0, Kia 1, Mobis 0, and LG 5.

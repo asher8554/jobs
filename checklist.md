@@ -39,3 +39,11 @@
 - [x] Preserve posting history across generated ID migrations.
 - [x] Run full tests, build, and live update.
 - [x] Commit final review fixes.
+
+## Pagination Scrape Fix
+
+- [x] Add regression coverage for numbered or next-button pagination.
+- [x] Update the generic scraper to collect every reachable page before parsing status.
+- [x] Run scoped generic scraper test.
+- [x] Run full tests, build, and live update.
+- [x] Commit pagination fix.

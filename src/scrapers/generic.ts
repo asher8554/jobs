@@ -1,5 +1,5 @@
 // 채용 사이트 화면에서 공고 후보를 추출하고 공통 공고 모델로 정규화한다.
-import type { Browser, Page } from "playwright";
+import type { Browser, Locator, Page } from "playwright";
 import type { SiteConfig } from "../config.js";
 import { extractDateRange, kstDateStamp } from "../date.js";
 import { buildContentHash, buildPostingId } from "../hash.js";
@@ -24,6 +24,17 @@ const D_DAY_TEXT_PATTERN = /(?:^|\n)\s*D-\s*(\d+)\s*(?=\n|$)/i;
 const UI_LABEL_PATTERN = /^(공유|스크랩|삭제|검색|초기화)$/;
 const NO_ACTIVE_POSTINGS_PATTERN = /0\s*개의?\s*채용\s*공고|총\s*0\s*건/;
 const LOAD_MORE_TEXT_PATTERN = /더보기|더 보기|More|MORE|Load more|전체보기|결과 더 보기/i;
+const NEXT_PAGE_TEXT_PATTERN = /^\s*(?:다음(?:\s*페이지)?|next(?:\s*page)?|>|›|»)\s*$/i;
+const PAGINATION_CONTAINER_SELECTOR = [
+  "nav",
+  "[aria-label*='page' i]",
+  "[aria-label*='페이지']",
+  "[class*='page' i]",
+  "[class*='paging' i]",
+  "[class*='pagination' i]",
+].join(",");
+const PAGINATION_CONTROL_SELECTOR = "a[href], button, [role='button'], [onclick]";
+const PAGINATION_PAGE_LIMIT = 50;
 const CAREER_LABEL_PATTERN = /^\s*(?:[\[【(]\s*)?경력(?:직)?(?:\s*[\]】)])?(?=$|[\s:：\-|])/;
 const ZERO_POSTING_RETRY_COUNT = 5;
 
@@ -64,14 +75,12 @@ export async function scrapeGenericCareerPage(
     await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForSelector("body", { timeout: 10_000 });
     await page.waitForSelector(getCandidateSelector(), { timeout: 5_000 }).catch(() => undefined);
-    await clickLoadMore(page);
-    await waitForPostingSignals(page, site);
 
-    const { blocks, postings } = await collectParsedPostings(page, site, checkedAt);
+    const { blocks, postings, bodyText } = await collectParsedPostingsAcrossPages(page, site, checkedAt);
     if (postings.length === 0) {
       return {
         postings: [],
-        status: buildZeroPostingStatus(site, blocks, await readBodyText(page), checkedAt),
+        status: buildZeroPostingStatus(site, blocks, bodyText, checkedAt),
       };
     }
 
@@ -99,17 +108,58 @@ export async function scrapeGenericCareerPage(
   }
 }
 
+async function collectParsedPostingsAcrossPages(
+  page: Page,
+  site: SiteConfig,
+  checkedAt: string,
+): Promise<{ blocks: CandidateBlock[]; postings: JobPosting[]; bodyText: string }> {
+  const blocks: CandidateBlock[] = [];
+  const postings: JobPosting[] = [];
+  const seenPostingIds = new Set<string>();
+  const visitedPages = new Set<string>();
+  const bodyTexts: string[] = [];
+
+  for (let pageIndex = 0; pageIndex < PAGINATION_PAGE_LIMIT; pageIndex += 1) {
+    await clickLoadMore(page);
+    await waitForPostingSignals(page, site);
+
+    const pageKey = await buildPageSignature(page);
+    if (visitedPages.has(pageKey)) break;
+    visitedPages.add(pageKey);
+
+    const pageResult = await collectParsedPostings(page, site, checkedAt);
+    mergeCandidateBlocks(blocks, pageResult.blocks);
+    bodyTexts.push(pageResult.bodyText);
+
+    for (const posting of pageResult.postings) {
+      if (seenPostingIds.has(posting.id)) continue;
+      seenPostingIds.add(posting.id);
+      postings.push(posting);
+    }
+
+    const beforeNextSignature = await buildPageSignature(page);
+    const moved = await goToNextPage(page, beforeNextSignature);
+    if (!moved) break;
+
+    await page.waitForSelector("body", { timeout: 10_000 }).catch(() => undefined);
+    await page.waitForSelector(getCandidateSelector(), { timeout: 5_000 }).catch(() => undefined);
+  }
+
+  return { blocks, postings, bodyText: bodyTexts.join("\n") };
+}
+
 async function collectParsedPostings(
   page: Page,
   site: SiteConfig,
   checkedAt: string,
-): Promise<{ blocks: CandidateBlock[]; postings: JobPosting[] }> {
+): Promise<{ blocks: CandidateBlock[]; postings: JobPosting[]; bodyText: string }> {
   let blocks: CandidateBlock[] = [];
   let postings: JobPosting[] = [];
+  let bodyText = "";
 
   for (let attempt = 0; attempt <= ZERO_POSTING_RETRY_COUNT; attempt += 1) {
     blocks = await collectCandidateBlocks(page);
-    const bodyText = await readBodyText(page);
+    bodyText = await readBodyText(page);
     blocks = mergeCandidateBlocks(blocks, collectLineBasedCandidateBlocks(site, bodyText, page.url()));
     postings = parseCandidateBlocks(site, blocks, checkedAt);
     if (postings.length > 0) break;
@@ -121,7 +171,7 @@ async function collectParsedPostings(
     await page.waitForTimeout(1_000);
   }
 
-  return { blocks, postings };
+  return { blocks, postings, bodyText };
 }
 
 function mergeCandidateBlocks(primary: CandidateBlock[], fallback: CandidateBlock[]): CandidateBlock[] {
@@ -393,6 +443,138 @@ async function clickLoadMore(page: Page): Promise<void> {
     await loadMore.click({ timeout: 3_000 }).catch(() => undefined);
     await page.waitForTimeout(1_000);
   }
+}
+
+async function goToNextPage(page: Page, previousSignature: string): Promise<boolean> {
+  const nextPageControl = await findNextPageControl(page);
+  if (!nextPageControl) return false;
+
+  await nextPageControl.scrollIntoViewIfNeeded().catch(() => undefined);
+  const clicked = await nextPageControl.click({ timeout: 3_000 }).then(
+    () => true,
+    () => false,
+  );
+  if (!clicked) return false;
+
+  await waitForPageSignatureChange(page, previousSignature);
+  await page.waitForLoadState("domcontentloaded", { timeout: 10_000 }).catch(() => undefined);
+  await page.waitForTimeout(500);
+
+  return (await buildPageSignature(page)) !== previousSignature;
+}
+
+async function findNextPageControl(page: Page): Promise<Locator | null> {
+  return findUsablePaginationControl([
+    page.getByRole("link", { name: NEXT_PAGE_TEXT_PATTERN }),
+    page.getByRole("button", { name: NEXT_PAGE_TEXT_PATTERN }),
+    page.locator(PAGINATION_CONTAINER_SELECTOR).locator(PAGINATION_CONTROL_SELECTOR).filter({
+      hasText: NEXT_PAGE_TEXT_PATTERN,
+    }),
+    await buildNextNumberPageLocator(page),
+  ]);
+}
+
+async function buildNextNumberPageLocator(page: Page): Promise<Locator> {
+  const currentPageNumber = (await detectCurrentPageNumber(page)) ?? 1;
+  const nextPageNumberPattern = new RegExp(`^\\s*${currentPageNumber + 1}\\s*$`);
+  return page.locator(PAGINATION_CONTAINER_SELECTOR).locator(PAGINATION_CONTROL_SELECTOR).filter({
+    hasText: nextPageNumberPattern,
+  });
+}
+
+async function detectCurrentPageNumber(page: Page): Promise<number | null> {
+  const currentPageText = await page
+    .locator(PAGINATION_CONTAINER_SELECTOR)
+    .locator("[aria-current='page'], [class*='active' i], [class*='current' i], .on")
+    .filter({ hasText: /^\s*\d+\s*$/ })
+    .first()
+    .innerText({ timeout: 500 })
+    .catch(() => "");
+  const currentPageFromText = parsePositiveInteger(currentPageText);
+  if (currentPageFromText) return currentPageFromText;
+
+  return detectCurrentPageNumberFromUrl(page.url());
+}
+
+function detectCurrentPageNumberFromUrl(value: string): number | null {
+  const url = new URL(value);
+  for (const [key, parameterValue] of url.searchParams.entries()) {
+    if (!/page|paging|pageNo|pageIndex|currentPage/i.test(key)) continue;
+
+    const pageNumber = parsePositiveInteger(parameterValue);
+    if (pageNumber) return pageNumber;
+  }
+
+  return null;
+}
+
+function parsePositiveInteger(value: string): number | null {
+  const normalized = value.trim();
+  if (!/^\d+$/.test(normalized)) return null;
+
+  const parsed = Number(normalized);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function findUsablePaginationControl(locators: Locator[]): Promise<Locator | null> {
+  for (const locator of locators) {
+    const count = Math.min(await locator.count().catch(() => 0), 10);
+    for (let index = 0; index < count; index += 1) {
+      const candidate = locator.nth(index);
+      if (await isUsablePaginationControl(candidate)) return candidate;
+    }
+  }
+
+  return null;
+}
+
+async function isUsablePaginationControl(locator: Locator): Promise<boolean> {
+  if (!(await locator.isVisible().catch(() => false))) return false;
+
+  return locator.evaluate((element) => {
+    let current: Element | null = element;
+
+    while (current && current !== document.body) {
+      const htmlElement = current as HTMLElement;
+      const className = String(htmlElement.getAttribute("class") ?? "").toLowerCase();
+      const isButtonDisabled = "disabled" in htmlElement && Boolean((htmlElement as HTMLButtonElement).disabled);
+
+      if (
+        htmlElement.getAttribute("aria-disabled") === "true" ||
+        htmlElement.hasAttribute("disabled") ||
+        htmlElement.hasAttribute("aria-current") ||
+        isButtonDisabled ||
+        className.includes("disabled") ||
+        className.includes("disable") ||
+        className.includes("inactive")
+      ) {
+        return false;
+      }
+
+      current = htmlElement.parentElement;
+    }
+
+    return true;
+  }).catch(() => false);
+}
+
+async function waitForPageSignatureChange(page: Page, previousSignature: string): Promise<void> {
+  await page.waitForFunction(buildPageSignatureChangeScript(previousSignature), undefined, { timeout: 5_000 }).catch(
+    () => undefined,
+  );
+}
+
+function buildPageSignatureChangeScript(previousSignature: string): string {
+  return `
+(() => {
+  const currentSignature = location.href + "|" + (document.body?.innerText || "");
+  return currentSignature !== ${JSON.stringify(previousSignature)};
+})()
+`;
+}
+
+async function buildPageSignature(page: Page): Promise<string> {
+  return `${page.url()}|${await readBodyText(page)}`;
 }
 
 async function waitForPostingSignals(page: Page, site: SiteConfig): Promise<void> {

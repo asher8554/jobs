@@ -370,6 +370,76 @@ describe("scrapeGenericCareerPage", () => {
     }
   }, 30_000);
 
+  it("scrapes postings from every numbered pagination page", async () => {
+    const browser = await chromium.launch();
+    const firstPostingUrl = "https://career.kia.com/job/page-1";
+    const secondPostingUrl = "https://career.kia.com/job/page-2";
+
+    try {
+      await withPagedHtmlServer({
+        "/apply?page=1": `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <ul>
+                  <li>
+                    <a href="${firstPostingUrl}">경력<br>First Page Engineer<br>2026.05.30 ~ 2026.06.06</a>
+                  </li>
+                </ul>
+                <nav aria-label="pagination">
+                  <a href="/apply?page=2" aria-label="다음 페이지">다음</a>
+                </nav>
+              </main>
+            </body>
+          </html>
+        `,
+        "/apply?page=2": `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <ul>
+                  <li>
+                    <a href="${secondPostingUrl}">경력<br>Second Page Engineer<br>2026.05.31 ~ 2026.06.07</a>
+                  </li>
+                </ul>
+                <nav aria-label="pagination">
+                  <span aria-current="page">2</span>
+                </nav>
+              </main>
+            </body>
+          </html>
+        `,
+      }, async (url) => {
+        const result = await scrapeGenericCareerPage(
+          browser,
+          {
+            ...kiaConfig,
+            url,
+          },
+          "2026-05-30T00:00:00.000Z",
+        );
+
+        expect(result.status).toMatchObject({
+          source: "kia",
+          ok: true,
+          postingCount: 2,
+        });
+        expect(result.postings.map((posting) => posting.title)).toEqual([
+          "First Page Engineer",
+          "Second Page Engineer",
+        ]);
+        expect(result.postings.map((posting) => posting.url)).toEqual([
+          firstPostingUrl,
+          secondPostingUrl,
+        ]);
+      });
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+
   it("scrapes Hyundai-style javascript-only posting anchors with the page URL fallback", async () => {
     const browser = await chromium.launch();
     const html = `
@@ -629,6 +699,42 @@ async function withHtmlServer(html: string, run: (url: string) => Promise<void>)
   const address = server.address() as AddressInfo;
   try {
     await run(`http://127.0.0.1:${address.port}/apply`);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+  }
+}
+
+async function withPagedHtmlServer(pages: Record<string, string>, run: (url: string) => Promise<void>): Promise<void> {
+  const server = createServer((request, response) => {
+    const url = new URL(request.url ?? "/", "http://127.0.0.1");
+    const page = pages[`${url.pathname}${url.search}`] ?? pages[url.pathname];
+
+    if (!page) {
+      response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+      response.end("Not found");
+      return;
+    }
+
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.end(page);
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", resolve);
+  });
+
+  const address = server.address() as AddressInfo;
+  try {
+    await run(`http://127.0.0.1:${address.port}/apply?page=1`);
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => {

@@ -45,6 +45,17 @@ describe("generateHtml", () => {
     expect(html).toContain("Source status");
   });
 
+  it("renders a persistent dark mode toggle", () => {
+    const html = generateHtml(snapshot, diff);
+
+    expect(html).toContain("data-theme");
+    expect(html).toContain("theme-toggle");
+    expect(html).toContain("다크 모드");
+    expect(html).toContain("localStorage");
+    expect(html).toContain("prefers-color-scheme: dark");
+    expect(html).toContain("[data-theme=\"dark\"]");
+  });
+
   it("escapes changed before and after posting data", () => {
     const html = generateHtml(snapshot, {
       ...diff,

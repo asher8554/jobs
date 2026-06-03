@@ -47,3 +47,11 @@
 - [x] Run scoped generic scraper test.
 - [x] Run full tests, build, and live update.
 - [x] Commit pagination fix.
+
+## Dark Mode Dashboard
+
+- [x] Add HTML generator coverage for theme controls and dark palette.
+- [x] Add light, dark, and stored-theme rendering support to the generated dashboard.
+- [x] Regenerate `public/index.html`.
+- [x] Run tests, build, and rendered Playwright QA.
+- [x] Commit dark mode dashboard update.

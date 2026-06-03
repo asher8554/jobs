@@ -75,3 +75,13 @@
 - The generic scraper now repeats the existing load-more, signal wait, collection, and parsing sequence per page, then clicks a usable next-page control until no next page is reachable or the 50-page guard is hit.
 - Validation passed after rebasing onto latest `origin/main`: full test suite exited 0 with 9 files and 79 tests; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=6 sources=5 failed=0`.
 - Live update source counts on 2026-06-03 were Samsung 0, Hyundai 0, Kia 1, Mobis 0, and LG 5.
+
+## 2026-06-03 Dark Mode Dashboard
+
+- User asked to add dark mode to the job dashboard.
+- Assumption: the static dashboard should respect OS dark preference and also provide a visible manual light/dark toggle saved in `localStorage`.
+- Scope is limited to `src/generate-html.ts`, `tests/html.test.ts`, generated `public/index.html`, and work logs.
+- Added CSS custom properties for light and dark palettes, a header switch labeled `다크 모드`, pre-paint theme initialization, and `localStorage` persistence.
+- Rendered QA used regular Playwright because the Browser plugin was not available in this session. Initial QA found the hidden checkbox click was blocked by the slider; fixed by making the whole switch label a checkbox hit area.
+- Final validation passed: `tests/html.test.ts` exited 0 with 6 tests; full suite exited 0 with 9 files and 80 tests; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=5 sources=5 failed=0`.
+- Playwright rendered QA confirmed title `채용 변경 모니터`, no console warnings/errors, dark toggle sets and stores `jobs-theme=dark`, reload preserves dark mode, and the mobile dark-mode switch stays within the header.

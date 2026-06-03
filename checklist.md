@@ -79,3 +79,4 @@
 - [x] Render preserved sources as `보존` instead of `FAIL`.
 - [x] Keep preserved sources out of the failed source count.
 - [x] Run build, full tests, and live update.
+- [x] Extend preservation to partial source drops such as GitHub runner scraping 24 of 30 Hyundai postings.

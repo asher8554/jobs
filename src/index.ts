@@ -15,7 +15,7 @@ export async function main(): Promise<void> {
   const previous = await readSnapshot();
   const sites = await loadSiteConfigs();
   const scraped = await scrapeAllSites(sites, checkedAt);
-  const sources = protectUnexpectedEmptySources(previous, scraped.postings, scraped.sources);
+  const sources = protectUnexpectedIncompleteSources(previous, scraped.postings, scraped.sources);
   const anySuccess = sources.some((source) => source.ok);
 
   const currentPostings = anySuccess
@@ -70,7 +70,7 @@ function isPreservedSource(source: SourceStatus): source is SourceStatus & { pre
   return "preserved" in source && source.preserved === true;
 }
 
-function protectUnexpectedEmptySources(
+function protectUnexpectedIncompleteSources(
   previous: { postings: JobPosting[] } | null,
   scrapedPostings: JobPosting[],
   sources: SourceStatus[],
@@ -84,7 +84,7 @@ function protectUnexpectedEmptySources(
     const previousCount = previousPostingCounts.get(source.source) ?? 0;
     const scrapedCount = scrapedPostingCounts.get(source.source) ?? 0;
 
-    if (!source.ok || source.postingCount !== 0 || previousCount === 0 || scrapedCount > 0) {
+    if (!source.ok || previousCount === 0 || scrapedCount >= previousCount) {
       return source;
     }
 
@@ -94,7 +94,7 @@ function protectUnexpectedEmptySources(
       checkedAt: source.checkedAt,
       postingCount: previousCount,
       preserved: true,
-      message: `이번 수집이 0건으로 끝나 이전 공고 ${previousCount}건을 유지함`,
+      message: `이번 수집이 ${scrapedCount}건으로 끝나 이전 공고 ${previousCount}건을 유지함`,
     };
   });
 }

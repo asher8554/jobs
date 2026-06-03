@@ -104,6 +104,9 @@
 - Added a structured preserved source status with `ok: true`, `preserved: true`, `postingCount`, and a preservation message. Preserved sources are still carried forward in the merge path, but are no longer counted as failed sources.
 - The dashboard now renders preserved sources with a `보존` badge and a separate `보존 소스` metric. Real scraper failures still render as `FAIL`.
 - Validation passed: build exited 0 with `tsc --noEmit`; full test suite exited 0 with 9 files and 88 tests; local live update exited 0 with `postings=35 sources=5 failed=0`. Local HTML confirmed `FAIL hyundai` is absent, source quick links remain 5, dark mode remains present, and Hyundai postings remain present.
+- After deploying the preserved status change, GitHub Actions run `26896728745` passed and no longer rendered `FAIL hyundai`, but the hosted runner collected only 24 Hyundai postings while local live update still collected 30. This confirms the remaining issue is partial runner collection, not current site shrinkage.
+- Extended the preservation guard from only zero-result drops to any previously populated source returning fewer postings than the previous snapshot. The partial result remains visible through a `보존` source status, and missing previous postings are carried forward.
+- Validation after partial-drop preservation passed: build exited 0 with `tsc --noEmit`; full test suite exited 0 with 9 files and 89 tests; local live update exited 0 with `postings=35 sources=5 failed=0`. Local source counts were Samsung 0, Hyundai 30, Kia 0, Mobis 0, and LG 5.
 
 ## 2026-06-03 Dark Mode Dashboard
 

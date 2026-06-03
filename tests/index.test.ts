@@ -222,4 +222,62 @@ describe("CLI entry point", () => {
     ]);
     expect(log).toHaveBeenCalledWith("postings=1 sources=2 failed=0");
   });
+
+  it("preserves previous postings when a populated source returns fewer postings", async () => {
+    const previousHyundaiBatteryPosting = posting({
+      id: "hyundai-battery-engineer",
+      company: "Hyundai Motor Company",
+      title: "Battery Engineer",
+      url: "https://example.com/hyundai/jobs/2",
+      source: "hyundai",
+      firstSeenAt: "2026-05-29T00:00:00.000Z",
+      lastSeenAt: "2026-05-29T00:00:00.000Z",
+      contentHash: "hyundai-battery-hash",
+    });
+    const currentHyundaiPosting = posting({
+      id: "hyundai-strategy-manager",
+      company: "Hyundai Motor Company",
+      title: "Strategy Manager",
+      url: "https://example.com/hyundai/jobs/1",
+      source: "hyundai",
+      contentHash: "hyundai-hash",
+    });
+    const previous: Snapshot = {
+      checkedAt: "2026-05-29T00:00:00.000Z",
+      postings: [
+        posting({
+          ...currentHyundaiPosting,
+          firstSeenAt: "2026-05-29T00:00:00.000Z",
+          lastSeenAt: "2026-05-29T00:00:00.000Z",
+        }),
+        previousHyundaiBatteryPosting,
+      ],
+      sources: [{ source: "hyundai", ok: true, checkedAt: "2026-05-29T00:00:00.000Z", postingCount: 2 }],
+    };
+    await mkdir(join(dir, "data"), { recursive: true });
+    await writeFile(join(dir, "data", "snapshot.json"), `${JSON.stringify(previous, null, 2)}\n`, "utf8");
+    vi.mocked(loadSiteConfigs).mockResolvedValue([hyundaiSite]);
+    vi.mocked(scrapeAllSites).mockResolvedValue({
+      postings: [currentHyundaiPosting],
+      sources: [{ source: "hyundai", ok: true, checkedAt, postingCount: 1 }],
+    });
+
+    await main();
+
+    const snapshot = JSON.parse(await readFile(join(dir, "data", "snapshot.json"), "utf8")) as Snapshot;
+    expect(snapshot.postings.map((item) => item.id).sort()).toEqual([
+      "hyundai-battery-engineer",
+      "hyundai-strategy-manager",
+    ]);
+    expect(snapshot.sources).toEqual([
+      {
+        source: "hyundai",
+        ok: true,
+        checkedAt,
+        postingCount: 2,
+        preserved: true,
+        message: "이번 수집이 1건으로 끝나 이전 공고 2건을 유지함",
+      },
+    ]);
+  });
 });

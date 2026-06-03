@@ -21,6 +21,7 @@ const DATE_LINE_PATTERN = new RegExp(DATE_TOKEN_PATTERN_SOURCE);
 const DATE_RANGE_PATTERN = new RegExp(`${DATE_TOKEN_PATTERN_SOURCE}\\s*[-~〜–—]\\s*${DATE_TOKEN_PATTERN_SOURCE}`, "g");
 const D_DAY_LINE_PATTERN = /^\s*D-\s*\d+\s*$/i;
 const D_DAY_TEXT_PATTERN = /(?:^|\n)\s*D-\s*(\d+)\s*(?=\n|$)/i;
+const OPEN_UNTIL_FILLED_LINE_PATTERN = /^\s*채용시까지\s*$/;
 const UI_LABEL_PATTERN = /^(공유|스크랩|삭제|검색|초기화)$/;
 const NO_ACTIVE_POSTINGS_PATTERN = /0\s*개의?\s*채용\s*공고|총\s*0\s*건/;
 const LOAD_MORE_TEXT_PATTERN = /더보기|더 보기|More|MORE|Load more|전체보기|결과 더 보기/i;
@@ -223,9 +224,19 @@ function collectLineBasedCandidateBlocks(site: SiteConfig, bodyText: string, pag
 function looksLikeLineBasedPosting(lines: string[], requiredKeywords: string[]): boolean {
   const titleLine = lines[1] ?? "";
   if (titleLine.length < 4 || isMetadataLine(titleLine) || DATE_LINE_PATTERN.test(titleLine)) return false;
-  if (!lines.slice(2, 4).some((line) => D_DAY_LINE_PATTERN.test(line) || DATE_LINE_PATTERN.test(line))) return false;
+  if (
+    !lines
+      .slice(2, 4)
+      .some(hasDeadlineLine)
+  ) {
+    return false;
+  }
 
   return hasRequiredKeywords(lines.join("\n"), requiredKeywords);
+}
+
+function hasDeadlineLine(line: string): boolean {
+  return D_DAY_LINE_PATTERN.test(line) || OPEN_UNTIL_FILLED_LINE_PATTERN.test(line) || DATE_LINE_PATTERN.test(line);
 }
 
 function buildSiteCompanyMarkers(site: SiteConfig): string[] {
@@ -309,6 +320,8 @@ function hasExcludedKeyword(text: string, excludedKeywords: string[]): boolean {
 function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: string): JobPosting | null {
   const url = normalizeHttpUrl(block.url);
   if (!url) return null;
+  if (!hasPostingDeadlineSignal(block.text)) return null;
+
   const identityUrl = block.urlIsPageFallback ? buildFallbackIdentityUrl(url) : url;
 
   const companies = detectCompanies(site, block.text);
@@ -341,6 +354,14 @@ function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: stri
     ...posting,
     contentHash: buildContentHash({ ...posting, url: identityUrl }),
   };
+}
+
+function hasPostingDeadlineSignal(text: string): boolean {
+  return (
+    D_DAY_TEXT_PATTERN.test(text) ||
+    DATE_LINE_PATTERN.test(text) ||
+    text.split(/\n+/).some((line) => OPEN_UNTIL_FILLED_LINE_PATTERN.test(line))
+  );
 }
 
 function detectCompanies(site: SiteConfig, text: string): CompanyName[] {
@@ -393,6 +414,7 @@ function isMetadataLine(line: string): boolean {
   return (
     UI_LABEL_PATTERN.test(line) ||
     D_DAY_LINE_PATTERN.test(line) ||
+    OPEN_UNTIL_FILLED_LINE_PATTERN.test(line) ||
     line.startsWith("#") ||
     compactLine === "경력채용" ||
     compactLine.endsWith("경력채용") ||
@@ -597,7 +619,7 @@ function buildPostingSignalScript(site: SiteConfig): string {
   }
 
   function hasDeadlineSignal(text) {
-    return /(?:^|\\n)\\s*D-\\s*\\d+\\s*(?=\\n|$)|20\\d{2}[.\\-/년\\s]+\\d{1,2}[.\\-/월\\s]+\\d{1,2}/.test(text);
+    return /(?:^|\\n)\\s*(?:D-\\s*\\d+|채용시까지)\\s*(?=\\n|$)|20\\d{2}[.\\-/년\\s]+\\d{1,2}[.\\-/월\\s]+\\d{1,2}/.test(text);
   }
 
   const hasCandidatePosting = Array.from(document.querySelectorAll(candidateSelector)).some((element) => {

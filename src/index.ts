@@ -22,9 +22,10 @@ export async function main(): Promise<void> {
     : previous?.postings ?? [];
   const snapshot = buildSnapshot(checkedAt, currentPostings, scraped.sources);
   const diff = diffPostings(previous?.postings ?? [], snapshot.postings, today);
+  const sourceLinks = sites.map(({ source, url }) => ({ source, url }));
 
   await mkdir("public", { recursive: true });
-  await writeFile("public/index.html", generateHtml(snapshot, diff), "utf8");
+  await writeFile("public/index.html", generateHtml(snapshot, diff, sourceLinks), "utf8");
   await writeFile("public/.nojekyll", "", "utf8");
 
   if (anySuccess) {

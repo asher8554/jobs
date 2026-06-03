@@ -86,7 +86,10 @@ describe("CLI entry point", () => {
     await main();
 
     expect(scrapeAllSites).toHaveBeenCalledWith([kiaSite], checkedAt);
-    expect(await readFile(join(dir, "public", "index.html"), "utf8")).toContain("Platform Engineer");
+    const html = await readFile(join(dir, "public", "index.html"), "utf8");
+    expect(html).toContain("Platform Engineer");
+    expect(html).toContain("채용 사이트 바로가기");
+    expect(html).toContain(`href="https://example.com/kia"`);
     expect(await readFile(join(dir, "public", ".nojekyll"), "utf8")).toBe("");
 
     const snapshot = JSON.parse(await readFile(join(dir, "data", "snapshot.json"), "utf8")) as Snapshot;

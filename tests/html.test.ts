@@ -56,6 +56,27 @@ describe("generateHtml", () => {
     expect(html).toContain("[data-theme=\"dark\"]");
   });
 
+  it("renders configured source quick links", () => {
+    const html = generateHtml(snapshot, diff, [
+      {
+        source: "hyundai",
+        url: "https://talent.hyundai.com/apply/applyList.hc?nfGubnC=abc&tagArray=",
+      },
+      {
+        source: "lg",
+        url: "https://careers.lg.com/apply",
+      },
+    ]);
+
+    expect(html).toContain("채용 사이트 바로가기");
+    expect(html).toContain(
+      `href="https://talent.hyundai.com/apply/applyList.hc?nfGubnC=abc&amp;tagArray="`,
+    );
+    expect(html).toContain(">Hyundai</a>");
+    expect(html).toContain(`href="https://careers.lg.com/apply"`);
+    expect(html).toContain(">LG</a>");
+  });
+
   it("escapes changed before and after posting data", () => {
     const html = generateHtml(snapshot, {
       ...diff,

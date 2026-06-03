@@ -55,3 +55,13 @@
 - [x] Regenerate `public/index.html`.
 - [x] Run tests, build, and rendered Playwright QA.
 - [x] Commit dark mode dashboard update.
+
+## Career Site Source Review
+
+- [x] Add HTML generator coverage for source quick links.
+- [x] Pass configured source URLs into the generated dashboard.
+- [x] Update Hyundai and Kia config URLs to the filtered career pages provided by the user.
+- [x] Recheck Samsung, Hyundai, Kia, Mobis, and LG live pages across all pages.
+- [x] Fix parser gaps found during live recheck.
+- [x] Run tests, build, live update, and rendered QA.
+- [x] Commit source review update.

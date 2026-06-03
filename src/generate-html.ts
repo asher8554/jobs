@@ -1,7 +1,20 @@
 // 채용 공고 변경 결과를 GitHub Pages용 정적 HTML로 렌더링한다.
-import type { DiffResult, JobPosting, Snapshot, SourceStatus } from "./model.js";
+import type { DiffResult, JobPosting, JobSource, Snapshot, SourceStatus } from "./model.js";
 
-export function generateHtml(snapshot: Snapshot, diff: DiffResult): string {
+export type SourceLink = {
+  source: JobSource;
+  url: string;
+};
+
+const SOURCE_LABELS: Record<JobSource, string> = {
+  samsung: "Samsung",
+  hyundai: "Hyundai",
+  kia: "Kia",
+  mobis: "Mobis",
+  lg: "LG",
+};
+
+export function generateHtml(snapshot: Snapshot, diff: DiffResult, sourceLinks: SourceLink[] = []): string {
   const failedSources = snapshot.sources.filter((source) => !source.ok).length;
 
   return `<!doctype html>
@@ -82,6 +95,9 @@ export function generateHtml(snapshot: Snapshot, diff: DiffResult): string {
     .card a { color: var(--link); font-weight: 700; text-decoration: none; }
     .card a:hover { text-decoration: underline; }
     .disabled-link { color: var(--disabled-link); font-weight: 700; }
+    .source-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .source-link { align-items: center; background: var(--surface); border: 1px solid var(--surface-border); border-radius: 8px; color: var(--link); display: inline-flex; font-weight: 700; min-height: 40px; padding: 0 12px; text-decoration: none; }
+    .source-link:hover { text-decoration: underline; }
     .badge { display: inline-flex; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; margin-right: 6px; }
     .new { background: #dcfce7; color: #166534; }
     .changed { background: #fef3c7; color: #92400e; }
@@ -131,6 +147,7 @@ export function generateHtml(snapshot: Snapshot, diff: DiffResult): string {
     </div>
   </header>
   <main>
+    ${section("채용 사이트 바로가기", renderSourceLinks(sourceLinks))}
     ${section("신규 공고", renderPostingCards(diff.newPostings, "new", "신규"))}
     ${section("변경 공고", renderChangedCards(diff.changedPostings))}
     ${section("마감임박", renderPostingCards(diff.closingSoonPostings, "soon", "마감임박"))}
@@ -244,6 +261,19 @@ function isHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function renderSourceLinks(sourceLinks: SourceLink[]): string {
+  const links = sourceLinks.filter((link) => isHttpUrl(link.url));
+  if (links.length === 0) return "";
+
+  return `<div class="source-links">${links.map(renderSourceLink).join("")}</div>`;
+}
+
+function renderSourceLink(link: SourceLink): string {
+  return `<a class="source-link" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(
+    SOURCE_LABELS[link.source],
+  )}</a>`;
 }
 
 function renderSourceStatus(sources: SourceStatus[]): string {

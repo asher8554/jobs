@@ -76,6 +76,22 @@
 - Validation passed after rebasing onto latest `origin/main`: full test suite exited 0 with 9 files and 79 tests; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=6 sources=5 failed=0`.
 - Live update source counts on 2026-06-03 were Samsung 0, Hyundai 0, Kia 1, Mobis 0, and LG 5.
 
+## 2026-06-03 Career Site Source Review
+
+- User asked to recheck Samsung, Hyundai, Kia, Mobis, and LG against specific career-list URLs, including all pagination pages.
+- User also asked the generated Page to include an easy button linking to each current source URL.
+- Chrome-backed verification is blocked in this session because Chrome is not running and the Codex Chrome Extension is missing from the checked profile, so public page verification will use the project Playwright runtime.
+- Scope starts with `config/sites.json`, `src/index.ts`, `src/generate-html.ts`, generated `public/index.html`, targeted parser fixes if the live recheck exposes gaps, and work logs.
+- Assumption: dashboard quick links should point to the exact configured source URLs used by the scraper, so future filter URL changes stay visible on the Page.
+- Added dashboard source quick links for Samsung, Hyundai, Kia, Mobis, and LG, using the exact configured scraper URLs.
+- Live recheck found Samsung has 4 visible career postings but none under Samsung Electronics DX/DS, so monitored Samsung count remains 0.
+- Live recheck found Hyundai career pagination spans multiple pages; after treating `채용시까지` as deadline metadata, the scraper collected 30 Hyundai career postings including 8 battery-related postings.
+- Live recheck found Kia has 1 visible posting, but it is contract work and not a career posting; the monitored Kia count remains 0. A false positive from the filter label `신입 경력 인턴 계약직 기타` was blocked by requiring a deadline signal.
+- Live recheck found Mobis has 0 active postings, matching the monitored count.
+- Live recheck found LG Electronics and LG Energy Solution have 8 visible postings in total, but 3 are non-career 산학장학생 or 인턴 postings; the monitored LG career count is 5.
+- Final validation passed: full test suite exited 0 with 9 files and 84 tests; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=35 sources=5 failed=0`.
+- Rendered Playwright QA over a temporary local HTTP server confirmed 5 source quick links, Hyundai battery postings, dark-mode persistence, no desktop or mobile overflow, and no console warnings/errors.
+
 ## 2026-06-03 Dark Mode Dashboard
 
 - User asked to add dark mode to the job dashboard.

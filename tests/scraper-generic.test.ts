@@ -524,6 +524,56 @@ describe("parseCandidateBlocks", () => {
     });
   });
 
+  it("parses Hyundai current career cards with month campaign labels", () => {
+    const result = parseCandidateBlocks(hyundaiConfig, [{
+      text: [
+        "5월 경력채용",
+        "  공유",
+        "글로벌 인사기획",
+        "D-4",
+        "#경영지원",
+        "#HR",
+        "#양재본사",
+        "#경력",
+        "#5월 경력 채용",
+      ].join("\n"),
+      url: "https://talent.hyundai.com/apply/applyList.hc",
+      urlIsPageFallback: true,
+    }], "2026-06-03T00:00:00.000Z");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      company: "Hyundai Motor Company",
+      title: "글로벌 인사기획",
+      endDate: "2026-06-07",
+      source: "hyundai",
+    });
+  });
+
+  it("parses Hyundai open-ended career cards without treating the deadline as a title", () => {
+    const result = parseCandidateBlocks(hyundaiConfig, [{
+      text: [
+        "공유",
+        "배터리 제조운영 (전극)",
+        "채용시까지",
+        "#생산/제조",
+        "#배터리",
+        "#울산공장",
+        "#경력",
+      ].join("\n"),
+      url: "https://talent.hyundai.com/apply/applyList.hc",
+      urlIsPageFallback: true,
+    }], "2026-06-03T00:00:00.000Z");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      company: "Hyundai Motor Company",
+      title: "배터리 제조운영 (전극)",
+      endDate: null,
+      source: "hyundai",
+    });
+  });
+
   it("uses the checkedAt KST date for D-0 deadlines", () => {
     const result = parseCandidateBlocks(hyundaiConfig, [{
       text: [
@@ -570,6 +620,16 @@ describe("parseCandidateBlocks", () => {
     expect(second.url).toBe("https://talent.hyundai.com/apply?tab=changed");
     expect(first.id).toBe(second.id);
     expect(first.contentHash).toBe(second.contentHash);
+  });
+
+  it("rejects default-company filter labels that mention career without a deadline signal", () => {
+    const result = parseCandidateBlocks(kiaConfig, [{
+      text: "신입 경력 인턴 계약직 기타",
+      url: "https://career.kia.com/apply/applyList.kc",
+      urlIsPageFallback: true,
+    }], "2026-06-03T00:00:00.000Z");
+
+    expect(result).toEqual([]);
   });
 
   it("parses implicit-company career postings", () => {

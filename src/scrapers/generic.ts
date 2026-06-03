@@ -34,7 +34,7 @@ const PAGINATION_CONTAINER_SELECTOR = [
   "[class*='paging' i]",
   "[class*='pagination' i]",
 ].join(",");
-const PAGINATION_CONTROL_SELECTOR = "a[href], button, [role='button'], [onclick]";
+const PAGINATION_CONTROL_SELECTOR = "button, [role='button'], [onclick], a[href]:not([href^='javascript'])";
 const PAGINATION_PAGE_LIMIT = 50;
 const CAREER_LABEL_PATTERN = /^\s*(?:[\[【(]\s*)?경력(?:직)?(?:\s*[\]】)])?(?=$|[\s:：\-|])/;
 const ZERO_POSTING_RETRY_COUNT = 5;
@@ -120,6 +120,9 @@ async function collectParsedPostingsAcrossPages(
   const visitedPages = new Set<string>();
   const bodyTexts: string[] = [];
 
+  await waitForPostingSignals(page, site);
+  await goToFirstPage(page);
+
   for (let pageIndex = 0; pageIndex < PAGINATION_PAGE_LIMIT; pageIndex += 1) {
     await clickLoadMore(page);
     await waitForPostingSignals(page, site);
@@ -139,7 +142,9 @@ async function collectParsedPostingsAcrossPages(
     }
 
     const beforeNextSignature = await buildPageSignature(page);
-    const moved = await goToNextPage(page, beforeNextSignature);
+    const moved =
+      (await goToPageNumber(page, pageIndex + 2, beforeNextSignature)) ||
+      (await goToNextPage(page, beforeNextSignature));
     if (!moved) break;
 
     await page.waitForSelector("body", { timeout: 10_000 }).catch(() => undefined);
@@ -281,9 +286,20 @@ function buildZeroPostingStatus(
 
   const relevantBlocks = blocks.filter(
     (block) =>
-      hasRequiredKeywords(block.text, site.requiredKeywords) && !hasExcludedKeyword(block.text, site.excludedKeywords),
+      hasRequiredKeywords(block.text, site.requiredKeywords) &&
+      hasPostingDeadlineSignal(block.text) &&
+      !hasExcludedKeyword(block.text, site.excludedKeywords),
   );
   if (relevantBlocks.length === 0) {
+    if (site.defaultCompany && hasUnparsedRequiredPostingWindow(bodyText, site.requiredKeywords)) {
+      return {
+        source: site.source,
+        ok: false,
+        checkedAt,
+        message: "Required-keyword posting rows were visible but no posting blocks could be parsed.",
+      };
+    }
+
     return {
       source: site.source,
       ok: true,
@@ -315,6 +331,22 @@ function hasRequiredKeywords(text: string, requiredKeywords: string[]): boolean 
 
 function hasExcludedKeyword(text: string, excludedKeywords: string[]): boolean {
   return excludedKeywords.some((keyword) => keyword !== "" && text.includes(keyword));
+}
+
+function hasUnparsedRequiredPostingWindow(bodyText: string, requiredKeywords: string[]): boolean {
+  const lines = bodyText
+    .split(/\n+/)
+    .map((line) => line.trim().replace(/\s+/g, " "))
+    .filter(Boolean);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const windowText = lines.slice(index, index + 8).join("\n");
+    if (hasRequiredKeywords(windowText, requiredKeywords) && hasPostingDeadlineSignal(windowText)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function normalizeBlock(site: SiteConfig, block: CandidateBlock, checkedAt: string): JobPosting | null {
@@ -467,20 +499,59 @@ async function clickLoadMore(page: Page): Promise<void> {
   }
 }
 
+async function goToFirstPage(page: Page): Promise<void> {
+  const currentPageNumber = await detectCurrentPageNumber(page);
+  if (!currentPageNumber || currentPageNumber <= 1) return;
+
+  await goToPageNumber(page, 1, await buildPageSignature(page));
+}
+
+async function goToPageNumber(page: Page, pageNumber: number, previousSignature: string): Promise<boolean> {
+  const pageNumberPattern = new RegExp(`^\\s*${pageNumber}\\s*$`);
+  const pageNumberControl = await findUsablePaginationControl([
+    page.locator(PAGINATION_CONTAINER_SELECTOR).locator(PAGINATION_CONTROL_SELECTOR).filter({
+      hasText: pageNumberPattern,
+    }),
+  ]);
+  if (!pageNumberControl) return false;
+
+  return clickPaginationControl(page, pageNumberControl, previousSignature);
+}
+
 async function goToNextPage(page: Page, previousSignature: string): Promise<boolean> {
   const nextPageControl = await findNextPageControl(page);
   if (!nextPageControl) return false;
 
-  await nextPageControl.scrollIntoViewIfNeeded().catch(() => undefined);
-  const clicked = await nextPageControl.click({ timeout: 3_000 }).then(
+  return clickPaginationControl(page, nextPageControl, previousSignature);
+}
+
+async function clickPaginationControl(page: Page, control: Locator, previousSignature: string): Promise<boolean> {
+  await control.scrollIntoViewIfNeeded().catch(() => undefined);
+  const clicked = await control.click({ timeout: 3_000 }).then(
     () => true,
     () => false,
   );
-  if (!clicked) return false;
 
+  if (clicked && (await waitForPaginationMove(page, previousSignature))) {
+    return true;
+  }
+
+  const jsClicked = await control.evaluate((element) => {
+    if (element instanceof HTMLElement) {
+      element.click();
+      return true;
+    }
+
+    return false;
+  }).catch(() => false);
+
+  return jsClicked ? waitForPaginationMove(page, previousSignature) : false;
+}
+
+async function waitForPaginationMove(page: Page, previousSignature: string): Promise<boolean> {
   await waitForPageSignatureChange(page, previousSignature);
   await page.waitForLoadState("domcontentloaded", { timeout: 10_000 }).catch(() => undefined);
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1_000);
 
   return (await buildPageSignature(page)) !== previousSignature;
 }

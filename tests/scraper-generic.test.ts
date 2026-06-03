@@ -167,6 +167,46 @@ describe("scrapeGenericCareerPage", () => {
     }
   }, 30_000);
 
+  it("marks default-company pages as failed when career rows are present but not parsed", async () => {
+    const browser = await chromium.launch();
+    const html = `
+      <!doctype html>
+      <html>
+        <body>
+          <main>
+            <a href="https://talent.hyundai.com/team/list.hc">Team Hyundai</a>
+            <div>총 42건의 채용공고가 진행 중입니다.</div>
+            <div>배터리 제조운영 (전극)</div>
+            <div>채용시까지</div>
+            <div>#생산/제조</div>
+            <div>#배터리</div>
+            <div>#울산공장</div>
+            <div>#경력</div>
+          </main>
+        </body>
+      </html>
+    `;
+
+    try {
+      const result = await scrapeGenericCareerPage(
+        browser,
+        {
+          ...hyundaiConfig,
+          url: `data:text/html;charset=utf-8,${encodeURIComponent(html)}`,
+        },
+        "2026-06-03T00:00:00.000Z",
+      );
+
+      expect(result.status).toMatchObject({
+        source: "hyundai",
+        ok: false,
+      });
+      expect(result.postings).toEqual([]);
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+
   it("scrapes LG-style text-only cards from line-based page content", async () => {
     const browser = await chromium.launch();
     const html = `
@@ -435,6 +475,74 @@ describe("scrapeGenericCareerPage", () => {
           secondPostingUrl,
         ]);
       });
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+
+  it("returns to the first pagination page before scraping all pages", async () => {
+    const browser = await chromium.launch();
+    const firstPostingUrl = "https://career.kia.com/job/start-page-1";
+    const secondPostingUrl = "https://career.kia.com/job/start-page-2";
+
+    try {
+      await withPagedHtmlServer({
+        "/apply?page=1": `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <ul>
+                  <li>
+                    <a href="${firstPostingUrl}">경력<br>Recovered First Page Engineer<br>2026.05.30 ~ 2026.06.06</a>
+                  </li>
+                </ul>
+                <nav aria-label="pagination">
+                  <span aria-current="page">1</span>
+                  <a href="/apply?page=2">2</a>
+                </nav>
+              </main>
+            </body>
+          </html>
+        `,
+        "/apply?page=2": `
+          <!doctype html>
+          <html>
+            <body>
+              <main>
+                <ul>
+                  <li>
+                    <a href="${secondPostingUrl}">경력<br>Initial Second Page Engineer<br>2026.05.31 ~ 2026.06.07</a>
+                  </li>
+                </ul>
+                <nav aria-label="pagination">
+                  <a href="/apply?page=1">1</a>
+                  <span aria-current="page">2</span>
+                </nav>
+              </main>
+            </body>
+          </html>
+        `,
+      }, async (url) => {
+        const result = await scrapeGenericCareerPage(
+          browser,
+          {
+            ...kiaConfig,
+            url,
+          },
+          "2026-05-30T00:00:00.000Z",
+        );
+
+        expect(result.status).toMatchObject({
+          source: "kia",
+          ok: true,
+          postingCount: 2,
+        });
+        expect(result.postings.map((posting) => posting.title)).toEqual([
+          "Recovered First Page Engineer",
+          "Initial Second Page Engineer",
+        ]);
+      }, "/apply?page=2");
     } finally {
       await browser.close();
     }
@@ -773,7 +881,11 @@ async function withHtmlServer(html: string, run: (url: string) => Promise<void>)
   }
 }
 
-async function withPagedHtmlServer(pages: Record<string, string>, run: (url: string) => Promise<void>): Promise<void> {
+async function withPagedHtmlServer(
+  pages: Record<string, string>,
+  run: (url: string) => Promise<void>,
+  initialPath = "/apply?page=1",
+): Promise<void> {
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
     const page = pages[`${url.pathname}${url.search}`] ?? pages[url.pathname];
@@ -794,7 +906,7 @@ async function withPagedHtmlServer(pages: Record<string, string>, run: (url: str
 
   const address = server.address() as AddressInfo;
   try {
-    await run(`http://127.0.0.1:${address.port}/apply?page=1`);
+    await run(`http://127.0.0.1:${address.port}${initialPath}`);
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => {

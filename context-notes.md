@@ -89,7 +89,9 @@
 - Live recheck found Kia has 1 visible posting, but it is contract work and not a career posting; the monitored Kia count remains 0. A false positive from the filter label `신입 경력 인턴 계약직 기타` was blocked by requiring a deadline signal.
 - Live recheck found Mobis has 0 active postings, matching the monitored count.
 - Live recheck found LG Electronics and LG Energy Solution have 8 visible postings in total, but 3 are non-career 산학장학생 or 인턴 postings; the monitored LG career count is 5.
-- Final validation passed: full test suite exited 0 with 9 files and 84 tests; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=35 sources=5 failed=0`.
+- GitHub Actions initially scraped Hyundai as a successful 0-posting source and overwrote the generated Page, so default-company pages with nearby required-keyword rows and deadline signals are now treated as scrape failures when no posting blocks parse; this preserves the previous source postings instead of erasing them.
+- Pagination is now normalized back to page 1 before scraping and then advances by numeric page buttons before falling back to a next button. This stabilizes Hyundai's multi-page career list.
+- Final validation passed: full test suite exited 0 with 9 files and 86 tests; build exited 0 with `tsc --noEmit`; live update exited 0 with `postings=35 sources=5 failed=0`.
 - Rendered Playwright QA over a temporary local HTTP server confirmed 5 source quick links, Hyundai battery postings, dark-mode persistence, no desktop or mobile overflow, and no console warnings/errors.
 
 ## 2026-06-03 Dark Mode Dashboard

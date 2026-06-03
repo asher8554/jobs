@@ -1,19 +1,6 @@
 {
-  "checkedAt": "2026-06-03T14:07:55.814Z",
+  "checkedAt": "2026-06-03T14:11:24.879Z",
   "postings": [
-    {
-      "id": "kia-b963dae19c8ac361",
-      "company": "Kia",
-      "title": "신입 경력 인턴 계약직 기타",
-      "careerType": "career",
-      "startDate": null,
-      "endDate": null,
-      "url": "https://career.kia.com/apply/applyList.kc?nfGubnC=37268bb0020007468bbc5a78ee13a6539b0a0a79bbfcdd7ad08406e8d43cd55f&searchText=&linkInfo=",
-      "source": "kia",
-      "firstSeenAt": "2026-06-03T14:07:55.814Z",
-      "lastSeenAt": "2026-06-03T14:07:55.814Z",
-      "contentHash": "67ef0222f0c15644"
-    },
     {
       "id": "lg-fd1f87b8abfb3782",
       "company": "LG Electronics",
@@ -24,7 +11,7 @@
       "url": "https://careers.lg.com/apply",
       "source": "lg",
       "firstSeenAt": "2026-05-30T11:57:39.073Z",
-      "lastSeenAt": "2026-06-03T14:07:55.814Z",
+      "lastSeenAt": "2026-06-03T14:11:24.879Z",
       "contentHash": "b3395f30b2b2872f"
     },
     {
@@ -37,7 +24,7 @@
       "url": "https://careers.lg.com/apply",
       "source": "lg",
       "firstSeenAt": "2026-06-02T05:14:10.817Z",
-      "lastSeenAt": "2026-06-03T14:07:55.814Z",
+      "lastSeenAt": "2026-06-03T14:11:24.879Z",
       "contentHash": "9a1a6816d4ee1e66"
     },
     {
@@ -50,7 +37,7 @@
       "url": "https://careers.lg.com/apply",
       "source": "lg",
       "firstSeenAt": "2026-06-03T05:29:50.526Z",
-      "lastSeenAt": "2026-06-03T14:07:55.814Z",
+      "lastSeenAt": "2026-06-03T14:11:24.879Z",
       "contentHash": "c364bec5d002fd96"
     },
     {
@@ -63,7 +50,7 @@
       "url": "https://careers.lg.com/apply",
       "source": "lg",
       "firstSeenAt": "2026-05-30T11:57:39.073Z",
-      "lastSeenAt": "2026-06-03T14:07:55.814Z",
+      "lastSeenAt": "2026-06-03T14:11:24.879Z",
       "contentHash": "8ce50284d9de9fb0"
     },
     {
@@ -76,7 +63,7 @@
       "url": "https://careers.lg.com/apply",
       "source": "lg",
       "firstSeenAt": "2026-05-30T11:57:39.073Z",
-      "lastSeenAt": "2026-06-03T14:07:55.814Z",
+      "lastSeenAt": "2026-06-03T14:11:24.879Z",
       "contentHash": "ff7b9f56a4e2c196"
     }
   ],
@@ -84,31 +71,31 @@
     {
       "source": "samsung",
       "ok": true,
-      "checkedAt": "2026-06-03T14:07:55.814Z",
+      "checkedAt": "2026-06-03T14:11:24.879Z",
       "postingCount": 0
     },
     {
       "source": "hyundai",
       "ok": true,
-      "checkedAt": "2026-06-03T14:07:55.814Z",
+      "checkedAt": "2026-06-03T14:11:24.879Z",
       "postingCount": 0
     },
     {
       "source": "kia",
       "ok": true,
-      "checkedAt": "2026-06-03T14:07:55.814Z",
-      "postingCount": 1
+      "checkedAt": "2026-06-03T14:11:24.879Z",
+      "postingCount": 0
     },
     {
       "source": "mobis",
       "ok": true,
-      "checkedAt": "2026-06-03T14:07:55.814Z",
+      "checkedAt": "2026-06-03T14:11:24.879Z",
       "postingCount": 0
     },
     {
       "source": "lg",
       "ok": true,
-      "checkedAt": "2026-06-03T14:07:55.814Z",
+      "checkedAt": "2026-06-03T14:11:24.879Z",
       "postingCount": 5
     }
   ]

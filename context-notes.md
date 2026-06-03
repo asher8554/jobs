@@ -97,6 +97,14 @@
 - Added a zero-result guard in the CLI merge path: if a source had previous postings and the current scrape reports `success: 0` with no scraped postings for that source, convert that source status to failure and carry forward the previous postings. Sources that previously had 0 postings, such as Samsung/Mobis in the current snapshot, remain valid 0-result successes.
 - Validation after the guard passed: full test suite exited 0 with 9 files and 87 tests; build exited 0 with `tsc --noEmit`; local live update exited 0 with `postings=35 sources=5 failed=0`. Local source counts were Samsung 0, Hyundai 30, Kia 0, Mobis 0, and LG 5.
 
+## 2026-06-04 Preserved Source Status
+
+- User reported that the Page showed `FAIL hyundai` with the message `이전 공고 30건이 있었지만 이번 수집이 0건으로 끝나 이전 결과를 유지함`.
+- Root cause: the zero-result guard correctly preserved the 30 Hyundai postings, but represented that preservation as `ok: false`. The HTML renderer then counted it as a failed source and rendered a red `FAIL` badge.
+- Added a structured preserved source status with `ok: true`, `preserved: true`, `postingCount`, and a preservation message. Preserved sources are still carried forward in the merge path, but are no longer counted as failed sources.
+- The dashboard now renders preserved sources with a `보존` badge and a separate `보존 소스` metric. Real scraper failures still render as `FAIL`.
+- Validation passed: build exited 0 with `tsc --noEmit`; full test suite exited 0 with 9 files and 88 tests; local live update exited 0 with `postings=35 sources=5 failed=0`. Local HTML confirmed `FAIL hyundai` is absent, source quick links remain 5, dark mode remains present, and Hyundai postings remain present.
+
 ## 2026-06-03 Dark Mode Dashboard
 
 - User asked to add dark mode to the job dashboard.

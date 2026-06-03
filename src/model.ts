@@ -29,6 +29,16 @@ export type SourceSuccess = {
   ok: true;
   checkedAt: string;
   postingCount: number;
+  preserved?: false;
+};
+
+export type SourcePreserved = {
+  source: JobSource;
+  ok: true;
+  checkedAt: string;
+  postingCount: number;
+  preserved: true;
+  message: string;
 };
 
 export type SourceFailure = {
@@ -38,7 +48,7 @@ export type SourceFailure = {
   message: string;
 };
 
-export type SourceStatus = SourceSuccess | SourceFailure;
+export type SourceStatus = SourceSuccess | SourcePreserved | SourceFailure;
 
 export type Snapshot = {
   checkedAt: string;

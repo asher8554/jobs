@@ -177,7 +177,7 @@ describe("CLI entry point", () => {
     ]);
   });
 
-  it("treats a populated source returning zero postings as a failed scrape", async () => {
+  it("treats a populated source returning zero postings as a preserved scrape", async () => {
     const previousHyundaiPosting = posting({
       id: "hyundai-battery-engineer",
       company: "Hyundai Motor Company",
@@ -212,12 +212,14 @@ describe("CLI entry point", () => {
     expect(snapshot.sources).toEqual([
       {
         source: "hyundai",
-        ok: false,
+        ok: true,
         checkedAt,
-        message: "이전 공고 1건이 있었지만 이번 수집이 0건으로 끝나 이전 결과를 유지함",
+        postingCount: 1,
+        preserved: true,
+        message: "이번 수집이 0건으로 끝나 이전 공고 1건을 유지함",
       },
       { source: "kia", ok: true, checkedAt, postingCount: 0 },
     ]);
-    expect(log).toHaveBeenCalledWith("postings=1 sources=2 failed=1");
+    expect(log).toHaveBeenCalledWith("postings=1 sources=2 failed=0");
   });
 });

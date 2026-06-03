@@ -72,3 +72,10 @@
 - [x] Treat unexpected `success: 0` as a source failure so previous postings are preserved.
 - [x] Run full tests and build.
 - [x] Regenerate the local live snapshot before push.
+
+## Preserved Source Status
+
+- [x] Add a structured preserved source status.
+- [x] Render preserved sources as `보존` instead of `FAIL`.
+- [x] Keep preserved sources out of the failed source count.
+- [x] Run build, full tests, and live update.

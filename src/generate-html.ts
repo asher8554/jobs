@@ -16,6 +16,7 @@ const SOURCE_LABELS: Record<JobSource, string> = {
 
 export function generateHtml(snapshot: Snapshot, diff: DiffResult, sourceLinks: SourceLink[] = []): string {
   const failedSources = snapshot.sources.filter((source) => !source.ok).length;
+  const preservedSources = snapshot.sources.filter(isPreservedSource).length;
 
   return `<!doctype html>
 <html lang="ko">
@@ -103,10 +104,12 @@ export function generateHtml(snapshot: Snapshot, diff: DiffResult, sourceLinks: 
     .changed { background: #fef3c7; color: #92400e; }
     .soon { background: #fee2e2; color: #991b1b; }
     .stable { background: #e0f2fe; color: #075985; }
+    .preserved { background: #fef3c7; color: #92400e; }
     .failed { background: #fee2e2; color: #991b1b; }
     :root[data-theme="dark"] .new { background: #14532d; color: #bbf7d0; }
     :root[data-theme="dark"] .changed { background: #713f12; color: #fde68a; }
     :root[data-theme="dark"] .soon, :root[data-theme="dark"] .failed { background: #7f1d1d; color: #fecaca; }
+    :root[data-theme="dark"] .preserved { background: #713f12; color: #fde68a; }
     :root[data-theme="dark"] .stable { background: #164e63; color: #a5f3fc; }
     .meta { color: var(--muted); font-size: 13px; line-height: 1.55; margin-top: 8px; }
     .empty { color: var(--muted); background: var(--surface); border: 1px dashed var(--empty-border); border-radius: 8px; padding: 16px; }
@@ -143,6 +146,7 @@ export function generateHtml(snapshot: Snapshot, diff: DiffResult, sourceLinks: 
       ${metric("신규", diff.newPostings.length)}
       ${metric("변경", diff.changedPostings.length)}
       ${metric("마감임박", diff.closingSoonPostings.length)}
+      ${metric("보존 소스", preservedSources)}
       ${metric("실패 소스", failedSources)}
     </div>
   </header>
@@ -283,14 +287,41 @@ function renderSourceStatus(sources: SourceStatus[]): string {
 }
 
 function renderSourceCard(source: SourceStatus): string {
-  const statusClass = source.ok ? "stable" : "failed";
-  const statusText = source.ok ? `성공: ${source.postingCount}건` : `실패: ${escapeHtml(source.message)}`;
+  const status = getSourceDisplayStatus(source);
 
   return `<article class="card">
-    <span class="badge ${statusClass}">${source.ok ? "OK" : "FAIL"}</span>
+    <span class="badge ${status.className}">${status.label}</span>
     <strong>${escapeHtml(source.source)}</strong>
-    <div class="meta">${statusText}<br>${escapeHtml(source.checkedAt)}</div>
+    <div class="meta">${status.text}<br>${escapeHtml(source.checkedAt)}</div>
   </article>`;
+}
+
+function getSourceDisplayStatus(source: SourceStatus): { className: string; label: string; text: string } {
+  if (isPreservedSource(source)) {
+    return {
+      className: "preserved",
+      label: "보존",
+      text: `보존: ${escapeHtml(source.message)}`,
+    };
+  }
+
+  if (source.ok) {
+    return {
+      className: "stable",
+      label: "OK",
+      text: `성공: ${source.postingCount}건`,
+    };
+  }
+
+  return {
+    className: "failed",
+    label: "FAIL",
+    text: `실패: ${escapeHtml(source.message)}`,
+  };
+}
+
+function isPreservedSource(source: SourceStatus): source is SourceStatus & { preserved: true; message: string } {
+  return "preserved" in source && source.preserved === true;
 }
 
 function escapeHtml(value: string): string {

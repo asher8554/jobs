@@ -162,4 +162,28 @@ describe("generateHtml", () => {
     expect(html).toContain("실패: fetch failed &lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert");
   });
+
+  it("renders preserved sources without a fail badge", () => {
+    const html = generateHtml(
+      {
+        ...snapshot,
+        sources: [
+          {
+            source: "hyundai",
+            ok: true,
+            checkedAt: "2026-05-30T00:00:00.000Z",
+            postingCount: 30,
+            preserved: true,
+            message: "이번 수집이 0건으로 끝나 이전 공고 30건을 유지함",
+          },
+        ],
+      },
+      { ...diff, newPostings: [] },
+    );
+
+    expect(html).toContain("보존 소스");
+    expect(html).toContain(`<span class="badge preserved">보존</span>`);
+    expect(html).toContain("보존: 이번 수집이 0건으로 끝나 이전 공고 30건을 유지함");
+    expect(html).not.toContain(`<span class="badge failed">FAIL</span>`);
+  });
 });

@@ -84,10 +84,12 @@
     .changed { background: #fef3c7; color: #92400e; }
     .soon { background: #fee2e2; color: #991b1b; }
     .stable { background: #e0f2fe; color: #075985; }
+    .preserved { background: #fef3c7; color: #92400e; }
     .failed { background: #fee2e2; color: #991b1b; }
     :root[data-theme="dark"] .new { background: #14532d; color: #bbf7d0; }
     :root[data-theme="dark"] .changed { background: #713f12; color: #fde68a; }
     :root[data-theme="dark"] .soon, :root[data-theme="dark"] .failed { background: #7f1d1d; color: #fecaca; }
+    :root[data-theme="dark"] .preserved { background: #713f12; color: #fde68a; }
     :root[data-theme="dark"] .stable { background: #164e63; color: #a5f3fc; }
     .meta { color: var(--muted); font-size: 13px; line-height: 1.55; margin-top: 8px; }
     .empty { color: var(--muted); background: var(--surface); border: 1px dashed var(--empty-border); border-radius: 8px; padding: 16px; }
@@ -111,7 +113,7 @@
     <div class="header-top">
       <div>
         <h1>채용 변경 모니터</h1>
-        <p>마지막 체크: 2026-06-03T15:45:49.594Z</p>
+        <p>마지막 체크: 2026-06-03T15:54:27.709Z</p>
       </div>
       <label class="theme-switch">
         <input id="theme-toggle" type="checkbox" aria-label="다크 모드">
@@ -124,7 +126,8 @@
       <div class="metric">신규<strong>0</strong></div>
       <div class="metric">변경<strong>0</strong></div>
       <div class="metric">마감임박<strong>7</strong></div>
-      <div class="metric">실패 소스<strong>1</strong></div>
+      <div class="metric">보존 소스<strong>0</strong></div>
+      <div class="metric">실패 소스<strong>0</strong></div>
     </div>
   </header>
   <main>
@@ -431,23 +434,23 @@
     <section><h2>Source status</h2><div class="grid"><article class="card">
     <span class="badge stable">OK</span>
     <strong>samsung</strong>
-    <div class="meta">성공: 0건<br>2026-06-03T15:45:49.594Z</div>
+    <div class="meta">성공: 0건<br>2026-06-03T15:54:27.709Z</div>
   </article><article class="card">
-    <span class="badge failed">FAIL</span>
+    <span class="badge stable">OK</span>
     <strong>hyundai</strong>
-    <div class="meta">실패: 이전 공고 30건이 있었지만 이번 수집이 0건으로 끝나 이전 결과를 유지함<br>2026-06-03T15:45:49.594Z</div>
+    <div class="meta">성공: 30건<br>2026-06-03T15:54:27.709Z</div>
   </article><article class="card">
     <span class="badge stable">OK</span>
     <strong>kia</strong>
-    <div class="meta">성공: 0건<br>2026-06-03T15:45:49.594Z</div>
+    <div class="meta">성공: 0건<br>2026-06-03T15:54:27.709Z</div>
   </article><article class="card">
     <span class="badge stable">OK</span>
     <strong>mobis</strong>
-    <div class="meta">성공: 0건<br>2026-06-03T15:45:49.594Z</div>
+    <div class="meta">성공: 0건<br>2026-06-03T15:54:27.709Z</div>
   </article><article class="card">
     <span class="badge stable">OK</span>
     <strong>lg</strong>
-    <div class="meta">성공: 5건<br>2026-06-03T15:45:49.594Z</div>
+    <div class="meta">성공: 5건<br>2026-06-03T15:54:27.709Z</div>
   </article></div></section>
   </main>
   <script>

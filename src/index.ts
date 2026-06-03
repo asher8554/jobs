@@ -57,11 +57,17 @@ function mergeScrapedPostings(
   scrapedPostings: JobPosting[],
   sources: SourceStatus[],
 ): JobPosting[] {
-  const failedSources = new Set(sources.filter((source) => !source.ok).map((source) => source.source));
+  const carriedSources = new Set(
+    sources.filter((source) => !source.ok || isPreservedSource(source)).map((source) => source.source),
+  );
   const scrapedIds = new Set(scrapedPostings.map((posting) => posting.id));
-  const carriedPostings = previous.filter((posting) => failedSources.has(posting.source) && !scrapedIds.has(posting.id));
+  const carriedPostings = previous.filter((posting) => carriedSources.has(posting.source) && !scrapedIds.has(posting.id));
 
   return preserveFirstSeen(previous, [...scrapedPostings, ...carriedPostings]);
+}
+
+function isPreservedSource(source: SourceStatus): source is SourceStatus & { preserved: true } {
+  return "preserved" in source && source.preserved === true;
 }
 
 function protectUnexpectedEmptySources(
@@ -84,9 +90,11 @@ function protectUnexpectedEmptySources(
 
     return {
       source: source.source,
-      ok: false,
+      ok: true,
       checkedAt: source.checkedAt,
-      message: `이전 공고 ${previousCount}건이 있었지만 이번 수집이 0건으로 끝나 이전 결과를 유지함`,
+      postingCount: previousCount,
+      preserved: true,
+      message: `이번 수집이 0건으로 끝나 이전 공고 ${previousCount}건을 유지함`,
     };
   });
 }

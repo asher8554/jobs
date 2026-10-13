@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-12T06:25:04.862Z",
+  "checkedAt": "2026-10-13T07:02:23.737Z",
   "postings": [
     {
       "id": "hyundai-ad0f595f619281fc",
@@ -2706,6 +2706,19 @@
       "contentHash": "a0fa08eeea52285c"
     },
     {
+      "id": "samsung-49d22ac4649fa7ce",
+      "company": "Samsung Electronics DS",
+      "title": "경력사원 채용(소장품관리 및 전시행정)",
+      "careerType": "career",
+      "startDate": "2026-10-06",
+      "endDate": "2026-10-16",
+      "url": "https://www.samsungcareers.com/hr/?ty=B",
+      "source": "samsung",
+      "firstSeenAt": "2026-10-13T07:02:23.737Z",
+      "lastSeenAt": "2026-10-13T07:02:23.737Z",
+      "contentHash": "300996d6f491bd53"
+    },
+    {
       "id": "samsung-fa71aeeaf29ea9e9",
       "company": "Samsung Electronics DS",
       "title": "경력사원 채용(화성사업장 간호사)",
@@ -2715,7 +2728,7 @@
       "url": "https://www.samsungcareers.com/#none",
       "source": "samsung",
       "firstSeenAt": "2026-10-06T06:48:46.989Z",
-      "lastSeenAt": "2026-10-12T06:25:04.862Z",
+      "lastSeenAt": "2026-10-13T07:02:23.737Z",
       "contentHash": "bd2e9f7bf1fd3106"
     },
     {
@@ -3100,7 +3113,7 @@
     {
       "source": "samsung",
       "ok": true,
-      "checkedAt": "2026-10-12T06:25:04.862Z",
+      "checkedAt": "2026-10-13T07:02:23.737Z",
       "postingCount": 33,
       "preserved": true,
       "message": "이번 수집이 2건으로 끝나 이전 공고 33건을 유지함"
@@ -3108,7 +3121,7 @@
     {
       "source": "hyundai",
       "ok": true,
-      "checkedAt": "2026-10-12T06:25:04.862Z",
+      "checkedAt": "2026-10-13T07:02:23.737Z",
       "postingCount": 163,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 163건을 유지함"
@@ -3116,19 +3129,19 @@
     {
       "source": "kia",
       "ok": true,
-      "checkedAt": "2026-10-12T06:25:04.862Z",
+      "checkedAt": "2026-10-13T07:02:23.737Z",
       "postingCount": 0
     },
     {
       "source": "mobis",
       "ok": false,
-      "checkedAt": "2026-10-12T06:25:04.862Z",
+      "checkedAt": "2026-10-13T07:02:23.737Z",
       "message": "Required-keyword posting rows were visible but no posting blocks could be parsed."
     },
     {
       "source": "lg",
       "ok": true,
-      "checkedAt": "2026-10-12T06:25:04.862Z",
+      "checkedAt": "2026-10-13T07:02:23.737Z",
       "postingCount": 42,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 42건을 유지함"

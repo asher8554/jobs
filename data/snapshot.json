@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-13T22:40:26.239Z",
+  "checkedAt": "2026-10-14T05:17:44.343Z",
   "postings": [
     {
       "id": "hyundai-ad0f595f619281fc",
@@ -2715,7 +2715,7 @@
       "url": "https://www.samsungcareers.com/hr/?ty=B",
       "source": "samsung",
       "firstSeenAt": "2026-10-13T07:02:23.737Z",
-      "lastSeenAt": "2026-10-13T22:40:26.239Z",
+      "lastSeenAt": "2026-10-14T05:17:44.343Z",
       "contentHash": "300996d6f491bd53"
     },
     {
@@ -2728,7 +2728,7 @@
       "url": "https://www.samsungcareers.com/#none",
       "source": "samsung",
       "firstSeenAt": "2026-10-06T06:48:46.989Z",
-      "lastSeenAt": "2026-10-13T22:40:26.239Z",
+      "lastSeenAt": "2026-10-14T05:17:44.343Z",
       "contentHash": "bd2e9f7bf1fd3106"
     },
     {
@@ -3113,7 +3113,7 @@
     {
       "source": "samsung",
       "ok": true,
-      "checkedAt": "2026-10-13T22:40:26.239Z",
+      "checkedAt": "2026-10-14T05:17:44.343Z",
       "postingCount": 34,
       "preserved": true,
       "message": "이번 수집이 2건으로 끝나 이전 공고 34건을 유지함"
@@ -3121,27 +3121,27 @@
     {
       "source": "hyundai",
       "ok": true,
-      "checkedAt": "2026-10-13T22:40:26.239Z",
+      "checkedAt": "2026-10-14T05:17:44.343Z",
       "postingCount": 163,
       "preserved": true,
-      "message": "이번 수집이 34건으로 끝나 이전 공고 163건을 유지함"
+      "message": "이번 수집이 0건으로 끝나 이전 공고 163건을 유지함"
     },
     {
       "source": "kia",
       "ok": true,
-      "checkedAt": "2026-10-13T22:40:26.239Z",
+      "checkedAt": "2026-10-14T05:17:44.343Z",
       "postingCount": 0
     },
     {
       "source": "mobis",
       "ok": false,
-      "checkedAt": "2026-10-13T22:40:26.239Z",
+      "checkedAt": "2026-10-14T05:17:44.343Z",
       "message": "Required-keyword posting rows were visible but no posting blocks could be parsed."
     },
     {
       "source": "lg",
       "ok": true,
-      "checkedAt": "2026-10-13T22:40:26.239Z",
+      "checkedAt": "2026-10-14T05:17:44.343Z",
       "postingCount": 42,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 42건을 유지함"

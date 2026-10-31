@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-30T06:20:02.756Z",
+  "checkedAt": "2026-10-31T06:11:35.215Z",
   "postings": [
     {
       "id": "hyundai-ad0f595f619281fc",
@@ -3321,7 +3321,7 @@
     {
       "source": "samsung",
       "ok": true,
-      "checkedAt": "2026-10-30T06:20:02.756Z",
+      "checkedAt": "2026-10-31T06:11:35.215Z",
       "postingCount": 35,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 35건을 유지함"
@@ -3329,7 +3329,7 @@
     {
       "source": "hyundai",
       "ok": true,
-      "checkedAt": "2026-10-30T06:20:02.756Z",
+      "checkedAt": "2026-10-31T06:11:35.215Z",
       "postingCount": 178,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 178건을 유지함"
@@ -3337,19 +3337,19 @@
     {
       "source": "kia",
       "ok": true,
-      "checkedAt": "2026-10-30T06:20:02.756Z",
+      "checkedAt": "2026-10-31T06:11:35.215Z",
       "postingCount": 0
     },
     {
       "source": "mobis",
       "ok": false,
-      "checkedAt": "2026-10-30T06:20:02.756Z",
+      "checkedAt": "2026-10-31T06:11:35.215Z",
       "message": "Candidate posting blocks were found but no postings could be parsed."
     },
     {
       "source": "lg",
       "ok": true,
-      "checkedAt": "2026-10-30T06:20:02.756Z",
+      "checkedAt": "2026-10-31T06:11:35.215Z",
       "postingCount": 42,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 42건을 유지함"

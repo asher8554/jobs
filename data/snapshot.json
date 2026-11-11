@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-10T07:41:13.135Z",
+  "checkedAt": "2026-11-11T07:00:01.322Z",
   "postings": [
     {
       "id": "hyundai-ad0f595f619281fc",
@@ -3328,21 +3328,47 @@
       "firstSeenAt": "2026-09-16T05:08:35.250Z",
       "lastSeenAt": "2026-09-28T05:46:53.862Z",
       "contentHash": "27b05accc196cc0a"
+    },
+    {
+      "id": "samsung-a24a4fdb9fbc83d0",
+      "company": "Samsung Electronics DX",
+      "title": "경력사원 채용(Visual Display, Digital Appliances, 생산기술연구소, Global CS센터, Global EHS실, 한국총괄)",
+      "careerType": "career",
+      "startDate": "2026-11-11",
+      "endDate": "2026-11-23",
+      "url": "https://www.samsungcareers.com/#none",
+      "source": "samsung",
+      "firstSeenAt": "2026-11-11T07:00:01.322Z",
+      "lastSeenAt": "2026-11-11T07:00:01.322Z",
+      "contentHash": "8e9cd821f9cc7f6b"
+    },
+    {
+      "id": "samsung-c4bedd58d0402082",
+      "company": "Samsung Electronics DX",
+      "title": "경력사원 채용(Visual Display, Digital Appliances, 생산기술연구소, Global CS센터, Global EHS실, 한국총괄)",
+      "careerType": "career",
+      "startDate": "2026-11-11",
+      "endDate": "2026-11-23",
+      "url": "https://www.samsungcareers.com/hr/?ty=B",
+      "source": "samsung",
+      "firstSeenAt": "2026-11-11T07:00:01.322Z",
+      "lastSeenAt": "2026-11-11T07:00:01.322Z",
+      "contentHash": "fe70ebc4116e08dc"
     }
   ],
   "sources": [
     {
       "source": "samsung",
       "ok": true,
-      "checkedAt": "2026-11-10T07:41:13.135Z",
+      "checkedAt": "2026-11-11T07:00:01.322Z",
       "postingCount": 35,
       "preserved": true,
-      "message": "이번 수집이 0건으로 끝나 이전 공고 35건을 유지함"
+      "message": "이번 수집이 2건으로 끝나 이전 공고 35건을 유지함"
     },
     {
       "source": "hyundai",
       "ok": true,
-      "checkedAt": "2026-11-10T07:41:13.135Z",
+      "checkedAt": "2026-11-11T07:00:01.322Z",
       "postingCount": 179,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 179건을 유지함"
@@ -3350,19 +3376,19 @@
     {
       "source": "kia",
       "ok": true,
-      "checkedAt": "2026-11-10T07:41:13.135Z",
+      "checkedAt": "2026-11-11T07:00:01.322Z",
       "postingCount": 0
     },
     {
       "source": "mobis",
       "ok": true,
-      "checkedAt": "2026-11-10T07:41:13.135Z",
+      "checkedAt": "2026-11-11T07:00:01.322Z",
       "postingCount": 0
     },
     {
       "source": "lg",
       "ok": true,
-      "checkedAt": "2026-11-10T07:41:13.135Z",
+      "checkedAt": "2026-11-11T07:00:01.322Z",
       "postingCount": 42,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 42건을 유지함"

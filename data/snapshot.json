@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-12T07:37:18.921Z",
+  "checkedAt": "2026-11-13T07:08:27.022Z",
   "postings": [
     {
       "id": "hyundai-ad0f595f619281fc",
@@ -3339,7 +3339,7 @@
       "url": "https://www.samsungcareers.com/#none",
       "source": "samsung",
       "firstSeenAt": "2026-11-11T07:00:01.322Z",
-      "lastSeenAt": "2026-11-12T07:37:18.921Z",
+      "lastSeenAt": "2026-11-13T07:08:27.022Z",
       "contentHash": "8e9cd821f9cc7f6b"
     },
     {
@@ -3352,7 +3352,7 @@
       "url": "https://www.samsungcareers.com/hr/?ty=B",
       "source": "samsung",
       "firstSeenAt": "2026-11-11T07:00:01.322Z",
-      "lastSeenAt": "2026-11-12T07:37:18.921Z",
+      "lastSeenAt": "2026-11-13T07:08:27.022Z",
       "contentHash": "fe70ebc4116e08dc"
     }
   ],
@@ -3360,7 +3360,7 @@
     {
       "source": "samsung",
       "ok": true,
-      "checkedAt": "2026-11-12T07:37:18.921Z",
+      "checkedAt": "2026-11-13T07:08:27.022Z",
       "postingCount": 37,
       "preserved": true,
       "message": "이번 수집이 2건으로 끝나 이전 공고 37건을 유지함"
@@ -3368,7 +3368,7 @@
     {
       "source": "hyundai",
       "ok": true,
-      "checkedAt": "2026-11-12T07:37:18.921Z",
+      "checkedAt": "2026-11-13T07:08:27.022Z",
       "postingCount": 179,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 179건을 유지함"
@@ -3376,19 +3376,19 @@
     {
       "source": "kia",
       "ok": true,
-      "checkedAt": "2026-11-12T07:37:18.921Z",
+      "checkedAt": "2026-11-13T07:08:27.022Z",
       "postingCount": 0
     },
     {
       "source": "mobis",
       "ok": true,
-      "checkedAt": "2026-11-12T07:37:18.921Z",
+      "checkedAt": "2026-11-13T07:08:27.022Z",
       "postingCount": 0
     },
     {
       "source": "lg",
       "ok": true,
-      "checkedAt": "2026-11-12T07:37:18.921Z",
+      "checkedAt": "2026-11-13T07:08:27.022Z",
       "postingCount": 42,
       "preserved": true,
       "message": "이번 수집이 0건으로 끝나 이전 공고 42건을 유지함"
